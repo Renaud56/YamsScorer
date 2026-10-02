@@ -1432,8 +1432,13 @@
 				const wanted=prev[i]!==undefined? prev[i]:settings.names[i];
 				const cur=list.find(p => p.toLowerCase()===(wanted||'').toLowerCase()&&!used.includes(p))||list.find(p => !used.includes(p))||list[0]||'';
 				used.push(cur);
-				return `<div class="row"><select id="sel-${i}" style="${pstyle(cur)};min-width:0;font-weight:800" onchange="this.style.cssText=pstyle(this.value)+';min-width:0;font-weight:800'">${list.map(p => `<option value="${esc(p)}" style="background:#fff;color:#000" ${p===cur? 'selected':''}>${esc(p)}</option>`).join('')}</select><button class="btn alt" style="padding:8px 12px" onclick="addNew(${i})">+</button></div>`
+				return `<div class="row">${i>0? `<button class="btn alt" style="padding:2px 0;width:34px;font-size:12px;flex:none;border-width:2px;border-radius:8px" onclick="movePlayer(${i},-1)">▲</button>`:'<span style="width:34px;flex:none"></span>'}<select id="sel-${i}" style="${pstyle(cur)};min-width:0;font-weight:800" onchange="this.style.cssText=pstyle(this.value)+';min-width:0;font-weight:800'">${list.map(p => `<option value="${esc(p)}" style="background:#fff;color:#000" ${p===cur? 'selected':''}>${esc(p)}</option>`).join('')}</select><button class="btn alt" style="padding:8px 12px" onclick="addNew(${i})">+</button></div>`
 			}).join('');
+		}
+		function movePlayer(i,d)
+		{
+			const n=currentNames(),j=i+d; if(j<0||j>=count) return;
+			[n[i],n[j]]=[n[j],n[i]]; renderSelects(n); log('Joueur déplacé',n.slice(0,count));
 		}
 		function addNew(i)
 		{
