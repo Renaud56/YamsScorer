@@ -1,0 +1,2 @@
+# YamsScorer
+Yams scorer app
