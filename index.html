@@ -1295,6 +1295,7 @@
 
 	<script>
 		const $=id => document.getElementById(id);
+		const log=(...a) => console.log('[Yams]',...a);
 		const K={STATE: 'yams_state',HIST: 'yams_history',SET: 'yams_settings',PLAYERS: 'yams_players',HIDDEN: 'yams_players_hidden',COLORS: 'yams_colors',DEL: 'yams_deleted',TS: 'yams_ts',SYNC: 'yams_sync'};
 		const SYNCED=[K.HIST,K.SET,K.PLAYERS,K.HIDDEN,K.COLORS,K.DEL];
 		let applying=false;
@@ -1492,8 +1493,8 @@
 			showScreen('home');
 		}
 		function menuClick() {game? openM('menu-modal'):renderHome()}
-		function quitSave() {jset(K.STATE,game); game=null; closeM('menu-modal'); renderHome(); toast('Partie sauvegardée')}
-		function quitDiscard() {localStorage.removeItem(K.STATE); game=null; closeM('menu-modal'); renderHome(); toast('Partie annulée')}
+		function quitSave() {log('Partie sauvegardée pour plus tard'); jset(K.STATE,game); game=null; closeM('menu-modal'); renderHome(); toast('Partie sauvegardée')}
+		function quitDiscard() {log('Partie abandonnée'); localStorage.removeItem(K.STATE); game=null; closeM('menu-modal'); renderHome(); toast('Partie annulée')}
 
 		/* ---------- partie ---------- */
 		function validNames()
@@ -1512,6 +1513,7 @@
 		function beginGame(names)
 		{
 			lastNames=names;
+			log('Nouvelle partie',names);
 			game={id: Date.now(),players: names.map(n => ({name: n,cells: {}})),prompted: false};
 			jset(K.STATE,game); renderGame(); showScreen('game');
 		}
@@ -1559,6 +1561,7 @@
 			pl.throws=pl.throws||{}; if(v>0&&tf) pl.throws[ed.r]=tf; else delete pl.throws[ed.r];
 			const bad=warn(game.players[ed.p],ed.r);
 			jset(K.STATE,game); closeM('cell-modal'); renderGame();
+			log('Score',game.players[ed.p].name,ed.r,'=',v,tf||'');
 			if(bad) toast('Attention : + doit être supérieur à −');
 			if(!game.prompted&&game.players.every(p => calc(p.cells,settings).filled===NCELLS)) {game.prompted=true; jset(K.STATE,game); setTimeout(() => openFinish(true),300)}
 		}
@@ -1661,6 +1664,7 @@
 			};
 			const h=hist(); h.unshift(m); jset(K.HIST,h);
 			lastNames=m.players.map(p => p.name);
+			log('Partie enregistrée',m.id,'gagnant:',winner,m.players.map(p => p.name+':'+p.total));
 			if(fin.live) {localStorage.removeItem(K.STATE); game=null}
 			closeM('finish-modal'); renderHome();
 			const sc=m.players.find(p => p.name===winner).total;
@@ -1764,8 +1768,8 @@
   <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700"><span>Partie 1 · ${d(seq[0])}</span><span>Partie ${n} · ${d(seq[n-1])}</span></div>
   <div style="font-size:12px;font-weight:700;margin-top:4px">🔥 Plus longue série : ${bw} victoire${bw>1? 's':''} d'affilée${bw>0? ` (${d(seq[bs])}${bs!==be? ' → '+d(seq[be]):''})`:''}<br>Série actuelle : ${last>0? last+' victoire(s)':Math.abs(last)+' défaite(s)'}</div></div>`;
 		}
-		function deleteMatch(id) {askConfirm('Supprimer cette partie ?','Action définitive.','Supprimer',() => {jset(K.DEL,[...jget(K.DEL,[]),id]); jset(K.HIST,hist().filter(m => m.id!==id)); renderHistory(); renderHome()})}
-		function clearHistory() {askConfirm("Effacer l'historique ?",'Toutes les parties seront supprimées. Action définitive.','Tout effacer',() => {jset(K.DEL,[...jget(K.DEL,[]),...hist().map(m => m.id)]); jset(K.HIST,[]); renderHistory(); renderHome()})}
+		function deleteMatch(id) {askConfirm('Supprimer cette partie ?','Action définitive.','Supprimer',() => {log('Partie supprimée',id); jset(K.DEL,[...jget(K.DEL,[]),id]); jset(K.HIST,hist().filter(m => m.id!==id)); renderHistory(); renderHome()})}
+		function clearHistory() {askConfirm("Effacer l'historique ?",'Toutes les parties seront supprimées. Action définitive.','Tout effacer',() => {log('Historique effacé'); jset(K.DEL,[...jget(K.DEL,[]),...hist().map(m => m.id)]); jset(K.HIST,[]); renderHistory(); renderHome()})}
 		function openDetail(id)
 		{
 			const m=hist().find(x => x.id===id); if(!m) return;
@@ -1783,7 +1787,7 @@
 		function syncThemeBtns() {const nb=document.body.classList.contains('nb'); $('th-nb').classList.toggle('alt',!nb); $('th-checker').classList.toggle('alt',nb)}
 		function setTheme(t)
 		{
-			document.body.classList.toggle('nb',t==='nb'); localStorage.setItem('yams_theme',t);
+			document.body.classList.toggle('nb',t==='nb'); localStorage.setItem('yams_theme',t); log('Thème',t);
 			document.querySelector('meta[name=theme-color]').content=t==='nb'? '#1e3a8a':'#000000'; syncThemeBtns();
 		}
 		setTheme(localStorage.getItem('yams_theme')||'checker');
@@ -1800,6 +1804,7 @@
 			const g=id => Math.max(0,parseInt($(id).value,10)||0);
 			settings.pts={full: g('st-full'),gs: g('st-gs'),ps: g('st-ps'),yams: g('st-yams')}; settings.thr=g('st-thr'); settings.bonus=g('st-bonus');
 			jset(K.SET,settings); closeM('settings-modal'); if(game) renderGame();
+			log('Configuration des points enregistrée',settings.pts,settings.thr,settings.bonus);
 			const n=recalcHistory(); $('home-podium').innerHTML=podiumHtml(bests()); toast(n? `Points enregistrés · ${n} partie(s) recalculée(s)`:'Points enregistrés');
 		}
 		// Seules les parties avec tableau détaillé sont recalculables ; le gagnant enregistré est conservé
@@ -1821,7 +1826,7 @@
 			const t=m.players.filter(p => typeof p.total==='number'); if(!t.length) return false;
 			const mx=Math.max(...t.map(p => p.total)),cur=m.players.find(p => p.name===m.winner);
 			if(cur&&cur.total===mx) return false;
-			m.winner=t.find(p => p.total===mx).name; return true;
+			m.winner=t.find(p => p.total===mx).name; log('Gagnant corrigé',m.id,m.winner); return true;
 		}
 
 		/* ---------- sauvegarde ---------- */
@@ -1831,6 +1836,7 @@
 			const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(data)],{type: 'application/json'}));
 			a.download=`yams-master-${today()}.json`; document.body.appendChild(a); a.click(); a.remove();
 			toast(`${data.matches.length} partie(s) exportée(s)`);
+			log('Export',data.matches.length,'partie(s)');
 		}
 		function importBackup(ev)
 		{
@@ -1845,8 +1851,8 @@
 					const add=inc.filter(m => m&&m.id&&m.winner&&Array.isArray(m.players)&&!ids.has(m.id));
 					jset(K.HIST,cur.concat(add).sort((a,b) => b.id-a.id));
 					if(d.players) jset(K.PLAYERS,[...new Set([...jget(K.PLAYERS,[]),...d.players])]);
-					renderHome(); renderSelects(currentNames()); toast(`${add.length} partie(s) importée(s)`);
-				} catch(e) {toast('Fichier invalide')}
+					renderHome(); renderSelects(currentNames()); toast(`${add.length} partie(s) importée(s)`); log('Import',add.length,'partie(s)');
+				} catch(e) {log('Import invalide',e); toast('Fichier invalide')}
 				ev.target.value='';
 			};
 			rd.readAsText(f);
@@ -1919,7 +1925,7 @@
 		}
 		function askToken() {if(!tc) return; lastTry=Date.now(); tc.requestAccessToken({prompt: ''})}
 		function syncClick() {tok&&Date.now()<tokExp? syncNow():askToken()}
-		function scheduleSync() {if(!tok) return; clearTimeout(syncT); syncT=setTimeout(syncNow,1500)}
+		function scheduleSync() {if(!tok) return; clearTimeout(syncT); syncT=setTimeout(syncNow,2000)}
 		const api=(url,o={}) => fetch(url,{...o,headers: {...(o.headers||{}),Authorization: 'Bearer '+tok}}).then(r => {if(r.status===401) {tok=null; needAuth=true; throw new Error('auth')} if(!r.ok) throw new Error('http '+r.status); return r});
 		const snap=() => ({matches: hist(),deleted: jget(K.DEL,[]),players: jget(K.PLAYERS,[]),hidden: jget(K.HIDDEN,[]),colors: jget(K.COLORS,{}),settings: {pts: settings.pts,thr: settings.thr,bonus: settings.bonus},ts: +localStorage.getItem(K.TS)||0});
 		function mergeData(l,r)
@@ -1959,6 +1965,7 @@
 			busy=true; setSync(true,'Synchronisation…');
 			try
 			{
+				log('Début de la synchronisation Drive');
 				const q=encodeURIComponent(`name='${FNAME}' and trashed=false`);
 				const l=await (await api(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime&fields=files(id)`)).json();
 				const id=l.files[0]&&l.files[0].id; sharedId=id||null;
@@ -1969,8 +1976,8 @@
 				const json=JSON.stringify(m);
 				if(id) await api(`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`,{method: 'PATCH',headers: {'Content-Type': 'application/json'},body: json});
 				else {const b='yamsb'; sharedId=(await (await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method: 'POST',headers: {'Content-Type': 'multipart/related; boundary='+b},body: `--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({name: FNAME})}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${json}\r\n--${b}--`})).json()).id}
-				setSync(true,'Synchronisé à '+nowTime());
-			} catch(e) {setSync(false,e.message==='auth'? 'Reconnexion requise : touchez le bouton':'Erreur de synchronisation')}
+				setSync(true,'Synchronisé à '+nowTime()); log('Synchro Drive OK');
+			} catch(e) {log('Synchro Drive erreur',e.message); setSync(false,e.message==='auth'? 'Reconnexion requise : touchez le bouton':'Erreur de synchronisation')}
 			busy=false; if(again) {again=false; scheduleSync()}
 		}
 		document.addEventListener('visibilitychange',() => {if(!document.hidden&&tok&&Date.now()<tokExp) syncNow()});
