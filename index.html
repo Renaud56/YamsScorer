@@ -1099,6 +1099,7 @@
 			<div id="hist-filter" class="tabs"><button id="f-all" class="on" onclick="setFilter('all')">Toutes les
 					parties</button><button id="f-top" onclick="setFilter('top')">🏆 Top 3 scores</button><button
 					id="f-month" onclick="setFilter('month')">📅 Par mois</button></div>
+			<div id="hist-count" style="text-align:center;font-weight:900;font-size:14px;margin-bottom:8px"></div>
 			<div id="hist-games" class="grid"></div>
 			<div id="hist-players" class="grid hidden"></div>
 			<button class="btn red" style="width:100%;margin-top:12px;font-size:12px;padding:8px"
@@ -1431,7 +1432,7 @@
 				const wanted=prev[i]!==undefined? prev[i]:settings.names[i];
 				const cur=list.find(p => p.toLowerCase()===(wanted||'').toLowerCase()&&!used.includes(p))||list.find(p => !used.includes(p))||list[0]||'';
 				used.push(cur);
-				return `<div class="row"><select id="fin-sel-${i}" style="${pstyle(cur)};min-width:0;font-weight:800" onchange="finRefresh()">${list.map(p => `<option value="${esc(p)}" style="background:#fff;color:#000" ${p===cur? 'selected':''}>${esc(p)}</option>`).join('')}</select><input type="number" inputmode="numeric" min="0" max="999" id="fin-t${i}" value="${tot[i]??''}" placeholder="Total" style="width:84px;flex:none" oninput="checkTot(this);autoWinner()"><button class="btn alt" style="padding:8px 12px" onclick="addFinNew(${i})">+</button></div>`
+				return `<div class="row"><select id="fin-sel-${i}" style="${pstyle(cur)};min-width:0;font-weight:800" onchange="finRefresh()">${list.map(p => `<option value="${esc(p)}" style="background:#fff;color:#000" ${p===cur? 'selected':''}>${esc(p)}</option>`).join('')}</select><input type="number" inputmode="numeric" min="0" max="999" id="fin-t${i}" value="${tot[i]??''}" placeholder="Total" style="width:84px;flex:none" oninput="checkTot(this);fin.manual=false;autoWinner()"><button class="btn alt" style="padding:8px 12px" onclick="addFinNew(${i})">+</button></div>`
 			}).join('');
 			finRefresh();
 		}
@@ -1483,8 +1484,8 @@
 		{
 			$('fin-totals').innerHTML=fin.live? fin.players.map((p,i) =>
 			{
-				const c=calc(p.cells,settings),v=old[i]!==undefined? old[i]:(p.cells&&c.filled>0? c.total:'');
-				return `<div class="row"><div class="chip" style="${pstyle(p.name)};flex:1;font-size:16px;margin:0;padding:8px 12px;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div><input type="number" inputmode="numeric" min="0" max="999" id="fin-t${i}" value="${v}" placeholder="Total" style="width:110px" oninput="checkTot(this);autoWinner()"></div>`
+				const c=calc(p.cells,settings),v=old[i]!==undefined? old[i]:(p.cells? c.total:'');
+				return `<div class="row"><div class="chip" style="${pstyle(p.name)};flex:1;font-size:16px;margin:0;padding:8px 12px;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div><input type="number" inputmode="numeric" min="0" max="999" id="fin-t${i}" value="${v}" placeholder="Total" style="width:110px" oninput="checkTot(this);fin.manual=false;autoWinner()"></div>`
 			}).join(''):'';
 			$('fin-winner').innerHTML='<option value="">— choisir —</option>'+fin.players.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
 			autoWinner();
@@ -1515,6 +1516,7 @@
 				players: fin.players.map((p,i) => ({name: p.name,total: t[i],throws: fin.live&&p.throws? p.throws:null,cells: fin.live? (c => {if(fin.fill) [...UP,...LOW].forEach(k => {if(c[k]===undefined) c[k]=0}); return c})(JSON.parse(JSON.stringify(p.cells))):null}))
 			};
 			const h=hist(); h.unshift(m); jset(K.HIST,h);
+			lastNames=m.players.map(p => p.name);
 			if(fin.live) {localStorage.removeItem(K.STATE); game=null}
 			closeM('finish-modal'); renderHome();
 			const sc=m.players.find(p => p.name===winner).total;
@@ -1538,6 +1540,7 @@
 		function renderHistory()
 		{
 			const h=hist().sort((a,b) => sk(b).localeCompare(sk(a))||b.id-a.id),gmax=maxScore();
+			$('hist-count').innerText=`${h.length} partie${h.length>1? 's':''} jouée${h.length>1? 's':''} au total`;
 			$('f-all').classList.toggle('on',histFilter==='all'); $('f-top').classList.toggle('on',histFilter==='top'); $('f-month').classList.toggle('on',histFilter==='month');
 			const top=histFilter==='top',list=top? h.filter(m => maxOf(m)!=null).sort((a,b) => maxOf(b)-maxOf(a)||sk(a).localeCompare(sk(b))).slice(0,3):h;
 			const card=(m,ix) =>
@@ -1579,7 +1582,7 @@
 			{
 				const isH=holders.includes(x),rate=Math.round(x.w/x.g*100),avg=x.k? Math.round(x.sum/x.k):null;
 				return `<div class="card hcard${isH? ' rec':''}"><div style="display:flex;justify-content:space-between;align-items:center;font-weight:900;font-size:17px;margin-bottom:6px;border-radius:8px;padding:4px 10px;${pstyle(x.n)}"><span>${esc(x.n)}</span>${isH? '<span class="tag" style="background:#fde047;color:#000">👑 DÉTENTEUR DU RECORD</span>':''}</div>
-    <div class="grid grid3">${cell('Record',x.best!=null? x.best:'–',false,isH)}${cell('Moyenne',avg!=null? avg:'–',avg!=null&&avg===M.a)}${cell('Victoires',x.w,x.w===M.w&&x.w>0)}${cell('Taux',rate+'%',rate===M.r&&rate>0)}${cell('Parties',x.g,x.g===M.g)}${cell('YAMS',x.y,x.y===M.y&&x.y>0)}</div>
+    <div class="grid grid3">${cell('Record',x.best!=null? x.best:'–',false,isH)}${cell('Moyenne',avg!=null? avg:'–',avg!=null&&avg===M.a)}${cell('Victoires',x.w,x.w===M.w&&x.w>0)}${cell('Défaites',x.g-x.w,false)}${cell('% victoire',rate+'%',rate===M.r&&rate>0)}${cell('Nb parties',x.g,x.g===M.g)}${cell('YAMS',x.y,x.y===M.y&&x.y>0)}</div>
     ${x.bd? `<div style="font-size:11px;margin-top:6px">Meilleur score le ${fmtDate(x.bd)}</div>`:''}${streakHtml(x.n,h)}</div>`
 			}).join(''):'<p style="text-align:center;font-size:13px">Aucune donnée.</p>';
 		}
@@ -1604,14 +1607,17 @@
 				if(m.winner===name) {if(cur>0) cur++; else {cur=1; st=i} } else cur=cur<0? cur-1:-1;
 				pts.push(cur); if(cur>bw) {bw=cur; bs=st; be=i}
 			});
-			const W=300,H=110,mx=Math.max(3,...pts.map(Math.abs)),n=pts.length;
-			const X=i => 6+i*(W-12)/(n-1),Y=v => H/2-v/mx*(H/2-10);
+			const W=320,H=180,L=26,mx=Math.max(3,...pts.map(Math.abs)),n=pts.length,Z=H/2-6;
+			const X=i => L+8+i*(W-L-16)/(n-1),Y=v => Z-v/mx*(Z-14);
 			const line=(a,b) => pts.slice(a,b+1).map((v,k) => `${X(a+k).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+			const bars=`<polyline points="${line(0,n-1)}" fill="none" stroke="#000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${bw>0? `<polyline points="${line(bs,be)}" fill="none" stroke="#f59e0b" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>`:''}`+pts.map((v,i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${n>25? 2.5:4}" fill="${v>0? '#22c55e':'#ef4444'}" stroke="#000" stroke-width="1.2"/>${n<=16? `<text x="${X(i).toFixed(1)}" y="${(v>0? Y(v)-7:Y(v)+14).toFixed(1)}" font-size="9" font-weight="800" text-anchor="middle">${Math.abs(v)}</text>`:''}`).join('');
+			const ticks=Array.from({length: 2*mx+1},(_,k) => k-mx).filter(v => mx<=6||v%2===0).map(v => `<line x1="${L}" x2="${W}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="${v===0? '#000':'#ddd'}" stroke-width="${v===0? 1.5:.5}"/><text x="${L-3}" y="${(Y(v)+3).toFixed(1)}" font-size="9" font-weight="700" text-anchor="end">${v>0? '+'+v:v}</text>`).join('');
+			const step=Math.max(1,Math.ceil(n/10)),xl=pts.map((_,i) => (i===0||i===n-1||(i+1)%step===0)? `<text x="${X(i).toFixed(1)}" y="${H-3}" font-size="9" font-weight="700" text-anchor="middle">${i+1}</text>`:'').join('');
 			const d=m => m.date? fmtDate(m.date):'?';
 			const last=pts[n-1];
 			return head+`
-  <svg viewBox="0 0 ${W} ${H}" style="width:100%;background:#fff;border:2px solid #000;border-radius:8px;margin-top:4px"><line x1="0" x2="${W}" y1="${H/2}" y2="${H/2}" stroke="#000" stroke-dasharray="3 3"/><polyline points="${line(0,n-1)}" fill="none" stroke="${pcol(name)[0]}" stroke-width="2" stroke-linejoin="round"/>${bw>0? `<polyline points="${line(bs,be)}" fill="none" stroke="#f59e0b" stroke-width="4" stroke-linejoin="round"/>`:''}<text x="3" y="10" font-size="9" font-weight="700">+${mx} V</text><text x="3" y="${H-3}" font-size="9" font-weight="700">−${mx} D</text></svg>
-  <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700"><span>${d(seq[0])}</span><span>${d(seq[n-1])}</span></div>
+  <svg viewBox="0 0 ${W} ${H}" style="width:100%;background:#fff;border:2px solid #000;border-radius:8px;margin-top:4px">${ticks}${bars}${xl}<text x="${L+2}" y="9" font-size="8" font-weight="800" fill="#15803d">▲ victoires d'affilée</text><text x="${W-2}" y="${H-14}" font-size="8" font-weight="800" fill="#b91c1c" text-anchor="end">▼ défaites d'affilée</text></svg>
+  <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700"><span>Partie 1 · ${d(seq[0])}</span><span>Partie ${n} · ${d(seq[n-1])}</span></div>
   <div style="font-size:12px;font-weight:700;margin-top:4px">🔥 Plus longue série : ${bw} victoire${bw>1? 's':''} d'affilée${bw>0? ` (${d(seq[bs])}${bs!==be? ' → '+d(seq[be]):''})`:''}<br>Série actuelle : ${last>0? last+' victoire(s)':Math.abs(last)+' défaite(s)'}</div></div>`;
 		}
 		function deleteMatch(id) {askConfirm('Supprimer cette partie ?','Action définitive.','Supprimer',() => {jset(K.DEL,[...jget(K.DEL,[]),id]); jset(K.HIST,hist().filter(m => m.id!==id)); renderHistory(); renderHome()})}
@@ -1620,7 +1626,7 @@
 		{
 			const m=hist().find(x => x.id===id); if(!m) return;
 			$('detail-title').innerText=`${fmtDT(m)} · 🏆 ${m.winner}`;
-			const pl=winFirst(m),totals=pl.map(p => typeof p.total==='number'? p.total:null);
+			const pl=winFirst(m),totals=pl.map(p => typeof p.total==='number'? p.total:p.cells? calc(p.cells,m.rules||settings).total:null);
 			$('detail-body').innerHTML=(pl.some(p => p.cells)
 				? `<div style="overflow-x:auto">${renderSheet(pl,m.rules||settings,{winner: m.winner,totals,recTotal: maxScore()})}</div><div style="font-size:11px;font-weight:700;margin-top:8px"><span style="background:#bbf7d0;border-radius:999px;padding:1px 8px">vert</span> meilleur de la ligne · <span style="background:#fffbea;padding:1px 8px;border:1px solid #eee">jaune</span> gagnant · <span class="rtag">★ RECORD</span> meilleur total jamais atteint</div>`
 				:`<p style="font-size:12px;font-weight:700">Détail des points non saisi.</p><div>${pl.map(p => `<div class="chip ${p.name===m.winner? 'w':''}" style="${pstyle(p.name)};display:block;font-size:16px;margin-bottom:6px">${p.name===m.winner? '★ ':''}${esc(p.name)} : ${p.total!=null? p.total+' pts':'–'}</div>`).join('')}</div>`)
