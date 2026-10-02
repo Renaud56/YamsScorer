@@ -508,7 +508,7 @@
 
 		.sheet tr.sub th,
 		.sheet tr.sub td {
-			background: #000;Option 2 : comptes séparés, avec un fichier partagé (nécessite du code)
+			background: #000;
 			color: #fff
 		}
 
@@ -937,7 +937,7 @@
 
 			<div class="card">
 				<div class="row" style="justify-content:space-between">
-					<h3 style="margin:0">Joueurs (1 à 4)</h3>
+					<h3 style="margin:0">Joueurs de la partie (1 à 4)</h3>
 					<button class="btn alt" style="padding:6px 10px;font-size:12px" onclick="openPlayers()">👥
 						Gérer</button>
 				</div>
@@ -1157,6 +1157,7 @@
 		const LOW=['brelan','carre','full','gs','ps','plus','minus','yams'];
 		const SUMROWS=['brelan','carre','plus','minus'];
 		const FIXED=['full','gs','ps','yams'];
+		const NCELLS=UP.length+LOW.length;
 		const LABEL={brelan: 'Brelan',carre: 'Carré',full: 'Full',gs: 'GS',ps: 'PS',plus: '+',minus: '−',yams: 'YAMS'};
 		const HINT={gs: 'grande suite',ps: 'petite suite',plus: 'max',minus: 'min'};
 		const DEF={playerCount: 2,names: [],pts: {full: 25,gs: 40,ps: 30,yams: 50},thr: 63,bonus: 35};
@@ -1202,24 +1203,29 @@
 		{
 			const c=players.map(p => calc(p.cells,r));
 			const w=i => o.winner===players[i].name? ' win':'';
-			const ti=o.live&&players.length>1? c.findIndex(x => x.filled<Math.max(...c.map(y => y.filled))):-1,turn=ti>=0? ti:(o.live&&players.length>1&&c.some(x => x.filled<13)? 0:-1);
+			const ti=o.live&&players.length>1? c.findIndex(x => x.filled<Math.max(...c.map(y => y.filled))):-1,turn=ti>=0? ti:(o.live&&players.length>1&&c.some(x => x.filled<NCELLS)? 0:-1);
 			const head=players.map((p,i) => {const t=o.totals? o.totals[i]:c[i].total; return `<th class="${(w(i)+(i===turn? ' turn':'')).trim()}" style="${pstyle(p.name)}${w(i)? `;box-shadow:inset 0 -6px 0 ${pcol(p.name)[0]}`:''}"><div class="pn">${w(i)? '★ ':''}${esc(p.name)}</div><div class="pt">${t==null? '–':t}</div>${i===turn? '<span class="tt">▶ SON TOUR</span>':''}${o.recTotal!=null&&t===o.recTotal? '<div class="rtag">★ RECORD</div>':''}</th>`}).join('');
 			const inRow=k =>
 			{
 				const mx=Math.max(0,...players.map(p => p.cells&&typeof p.cells[k]==='number'? p.cells[k]:0)); return `<tr><th class="rl">${rowLabel(k)}</th>${players.map((p,i) =>
 				{
 					const v=p.cells? p.cells[k]:undefined;
-					return `<td class="cell${v===undefined? ' empty':v===0? ' zero':''}${w(i)}${warn(p,k)? ' warn':''}${!o.live&&k!=='minus'&&mx>0&&v===mx&&players.length>1? ' best':''}" ${o.live? `data-p="${i}" data-r="${k}"`:''}>${'<span class="v">'+(v===undefined? '':v===0? '✕':v)+'</span>'}</td>`
+					return `<td class="cell${v===undefined? ' empty':v===0? ' zero':''}${w(i)}${warn(p,k)? ' warn':''}${!o.live&&k!=='minus'&&mx>0&&v===mx&&players.length>1? ' best':''}" ${o.live? `data-p="${i}" data-r="${k}"`:''}>${'<span class="v">'+(v===undefined? '':v===0? '✕':v)+'</span>'+(p.throws&&p.throws[k]&&v>0? `<sup style="font-size:10px">${p.throws[k]==='first'? '⭐':'⏱️'}</sup>`:'')}</td>`
 				}).join('')}</tr>`
+			};
+			const sRow=(label,key,cls) =>
+			{
+				const mx=Math.max(...c.map(x => x[key])),hl=!o.live&&players.length>1&&mx>0;
+				return `<tr class="${cls}"><th class="rl">${label}</th>${c.map((x,i) => `<td class="${(w(i)+(hl&&x[key]===mx? ' best':'')).trim()}"><span class="v">${x[key]}</span></td>`).join('')}</tr>`
 			};
 			const cRow=(label,fn,cls) => `<tr class="${cls}"><th class="rl">${label}</th>${c.map((x,i) => `<td class="${w(i).trim()}">${fn(x,i)}</td>`).join('')}</tr>`;
 			return `<table class="sheet"><thead><tr><th class="rl"></th>${head}</tr></thead><tbody>
     ${UP.map(inRow).join('')}
     ${cRow(`TOTAL<small>${r.thr} = +${r.bonus}</small>`,x => x.up,'calc')}
+    ${sRow('TOTAL HAUT','haut','sub')}
     ${cRow(`BONUS +${r.bonus}`,x => x.bonus? '+'+x.bonus:'–','calc')}
-    ${cRow('TOTAL HAUT',x => x.haut,'sub')}
     ${LOW.map(inRow).join('')}
-    ${cRow('TOTAL BAS',x => x.bas,'sub')}
+    ${sRow('TOTAL BAS','bas','sub')}
     ${cRow('TOTAL',(x,i) => {const t=o.totals? (o.totals[i]==null? '–':o.totals[i]):x.total; return t+(o.recTotal!=null&&t===o.recTotal? ' <span class="star">★</span>':'')},'grand')}
   </tbody></table>`;
 		}
@@ -1388,8 +1394,9 @@
 				h=`<div class="kp-disp" id="kp-disp">${ed.buf}</div><div class="grid grid3 kp">${[1,2,3,4,5,6,7,8,9].map(d => `<button class="btn alt" onclick="kp('${d}')">${d}</button>`).join('')}<button class="btn alt" onclick="kp('b')">⌫</button><button class="btn alt" onclick="kp('0')">0</button><button class="btn gold" onclick="kpOk()">OK</button></div><div class="grid grid2" style="margin-top:8px"><button class="btn alt" onclick="setCell(0)">✕ Barré</button></div>`;
 			}
 			if(cur!==undefined) h+=`<button class="btn red" style="width:100%;margin-top:8px;padding:8px" onclick="setCell(undefined)">Effacer la case</button>`;
-			$('cell-body').innerHTML=h; openM('cell-modal');
+			$('cell-body').innerHTML=thrHtml(game.players[p].throws&&game.players[p].throws[r])+h; openM('cell-modal');
 		}
+		const thrHtml=t => `<div class="row" style="gap:16px;margin-bottom:10px;font-size:14px;font-weight:800"><span style="font-size:12px;opacity:.7">Réussi au :</span><label class="row" style="gap:6px;width:auto"><input type="checkbox" id="thr-first" style="width:22px;height:22px" ${t==='first'? 'checked':''} onchange="if(this.checked)$('thr-last').checked=false">⭐ 1er lancer</label><label class="row" style="gap:6px;width:auto"><input type="checkbox" id="thr-last" style="width:22px;height:22px" ${t==='last'? 'checked':''} onchange="if(this.checked)$('thr-first').checked=false⏱️ ">Dernier lancer</label></div>`;
 		function kp(d)
 		{
 			if(d==='b') ed.buf=ed.buf.slice(0,-1);
@@ -1403,10 +1410,12 @@
 			if(v>0&&ed.r==='plus'&&typeof c.minus==='number'&&c.minus>0&&v<=c.minus) return toast(`+ doit être supérieur à − (${c.minus})`);
 			if(v>0&&ed.r==='minus'&&typeof c.plus==='number'&&c.plus>0&&v>=c.plus) return toast(`− doit être inférieur à + (${c.plus})`);
 			if(v===undefined) delete c[ed.r]; else c[ed.r]=v;
+			const pl=game.players[ed.p],tf=$('thr-first').checked? 'first':$('thr-last').checked? 'last':null;
+			pl.throws=pl.throws||{}; if(v>0&&tf) pl.throws[ed.r]=tf; else delete pl.throws[ed.r];
 			const bad=warn(game.players[ed.p],ed.r);
 			jset(K.STATE,game); closeM('cell-modal'); renderGame();
 			if(bad) toast('Attention : + doit être supérieur à −');
-			if(!game.prompted&&game.players.every(p => calc(p.cells,settings).filled===13)) {game.prompted=true; jset(K.STATE,game); setTimeout(() => openFinish(true),300)}
+			if(!game.prompted&&game.players.every(p => calc(p.cells,settings).filled===NCELLS)) {game.prompted=true; jset(K.STATE,game); setTimeout(() => openFinish(true),300)}
 		}
 
 		/* ---------- fin / enregistrement ---------- */
@@ -1444,10 +1453,10 @@
 		}
 		function openFinish(live)
 		{
-			const miss=game.players.reduce((s,p) => s+13-calc(p.cells,settings).filled,0);
+			const miss=game.players.reduce((s,p) => s+NCELLS-calc(p.cells,settings).filled,0);
 			if(miss)
 			{
-				$('miss-text').innerHTML=game.players.map(p => {const n=13-calc(p.cells,settings).filled; return `<div class="chip" style="${pstyle(p.name)};display:block;margin-bottom:6px">${esc(p.name)} : ${n? n+' case(s) vide(s)':'complet ✓'}</div>`}).join('');
+				$('miss-text').innerHTML=game.players.map(p => {const n=NCELLS-calc(p.cells,settings).filled; return `<div class="chip" style="${pstyle(p.name)};display:block;margin-bottom:6px">${esc(p.name)} : ${n? n+' case(s) vide(s)':'complet ✓'}</div>`}).join('');
 				return openM('missing-modal');
 			}
 			startFinish(false);
@@ -1494,7 +1503,8 @@
 		function saveFinish()
 		{
 			if(!$('fin-winner').value) {fin.manual=false; autoWinner()}
-			const winner=$('fin-winner').value; if(!winner) return toast('Choisissez le gagnant');
+			let winner=$('fin-winner').value; if(!winner) return toast('Choisissez le gagnant');
+			{const tt=finTotals(),mx=Math.max(...tt.map(x => x==null? -1:x)),wi=fin.players.findIndex(p => p.name===winner); if(mx>=0&&(tt[wi]==null? -1:tt[wi])<mx) winner=fin.players[tt.indexOf(mx)].name}
 			if(new Set(fin.players.map(p => p.name.toLowerCase())).size!==fin.players.length) return toast('Choisissez des joueurs différents');
 			const t=finTotals(),prevMax=maxScore(),mt=maxTotal();
 			const bad=fin.players.findIndex((_,i) => t[i]!=null&&t[i]>mt);
@@ -1502,7 +1512,7 @@
 			const m={
 				id: Date.now(),date: $('fin-date').value||null,time: $('fin-date').value? ($('fin-time').value||null):null,winner,comment: $('fin-comment').value.trim(),
 				rules: {thr: settings.thr,bonus: settings.bonus},
-				players: fin.players.map((p,i) => ({name: p.name,total: t[i],cells: fin.live? (c => {if(fin.fill) [...UP,...LOW].forEach(k => {if(c[k]===undefined) c[k]=0}); return c})(JSON.parse(JSON.stringify(p.cells))):null}))
+				players: fin.players.map((p,i) => ({name: p.name,total: t[i],throws: fin.live&&p.throws? p.throws:null,cells: fin.live? (c => {if(fin.fill) [...UP,...LOW].forEach(k => {if(c[k]===undefined) c[k]=0}); return c})(JSON.parse(JSON.stringify(p.cells))):null}))
 			};
 			const h=hist(); h.unshift(m); jset(K.HIST,h);
 			if(fin.live) {localStorage.removeItem(K.STATE); game=null}
@@ -1641,9 +1651,17 @@
 				if(!m.players.some(p => p.cells)) return;
 				m.rules={thr: settings.thr,bonus: settings.bonus};
 				m.players.forEach(p => {if(!p.cells) return; FIXED.forEach(k => {if(p.cells[k]>0) p.cells[k]=settings.pts[k]}); p.total=calc(p.cells,m.rules).total});
-				n++;
+				fixWinner(m); n++;
 			});
 			jset(K.HIST,h); return n;
+		}
+		// Le gagnant doit avoir le meilleur total (égalité : gagnant conservé)
+		function fixWinner(m)
+		{
+			const t=m.players.filter(p => typeof p.total==='number'); if(!t.length) return false;
+			const mx=Math.max(...t.map(p => p.total)),cur=m.players.find(p => p.name===m.winner);
+			if(cur&&cur.total===mx) return false;
+			m.winner=t.find(p => p.total===mx).name; return true;
 		}
 
 		/* ---------- sauvegarde ---------- */
@@ -1799,6 +1817,7 @@
 		document.addEventListener('pointerdown',() => {if(needAuth&&localStorage.getItem(K.SYNC)==='1'&&Date.now()-lastTry>30000) askToken()});
 
 		/* ---------- init ---------- */
+		{const h=hist(); if(h.map(fixWinner).some(Boolean)) jset(K.HIST,h)}
 		setCount(count); renderHome();
 		if(jget(K.STATE,null)) resumeGame();
 	</script>
