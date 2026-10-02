@@ -906,6 +906,147 @@
 				animation: none !important
 			}
 		}
+
+		/* thème carnet d'école */
+		body.nb {
+			--ink: #1e3a8a;
+			--paper: #f7f0de;
+			font-family: 'Trebuchet MS', 'Segoe UI', Roboto, system-ui, sans-serif;
+			color: #1a237e;
+			background-color: #e8d9b8;
+			background-image: linear-gradient(90deg, transparent 40px, #c0584f 40px, #c0584f 42px, transparent 42px), repeating-linear-gradient(#e8d9b8 0 27px, #c4ad80 27px 28px);
+			background-size: auto
+		}
+
+		body.nb main {
+			padding-left: 52px
+		}
+
+		body.nb header,
+		body.nb nav {
+			background: var(--ink);
+			border-color: #e57373
+		}
+
+		body.nb nav {
+			outline: 0
+		}
+
+		body.nb .card,
+		body.nb h2.title {
+			background: var(--paper);
+			border: 2px solid var(--ink);
+			border-radius: 6px;
+			box-shadow: 2px 3px 0 rgba(30, 58, 138, .25)
+		}
+
+		body.nb h2.title {
+			color: var(--ink);
+			font-weight: 700;
+			transform: rotate(-1deg)
+		}
+
+		body.nb .btn {
+			background: var(--ink);
+			border-color: var(--ink);
+			border-radius: 8px
+		}
+
+		body.nb .btn.alt {
+			background: var(--paper);
+			color: var(--ink)
+		}
+
+		body.nb .btn.gold {
+			background: #fde68a;
+			color: var(--ink)
+		}
+
+		body.nb .btn.red {
+			background: var(--paper)
+		}
+
+		body.nb #resume-card {
+			background: #fde68a !important
+		}
+
+		body.nb select,
+		body.nb input,
+		body.nb textarea {
+			border: 2px solid var(--ink);
+			border-radius: 6px;
+			background: var(--paper);
+			color: var(--ink)
+		}
+
+		body.nb .box {
+			background: var(--paper);
+			border: 2px solid var(--ink);
+			border-radius: 8px;
+			box-shadow: 4px 4px 0 rgba(30, 58, 138, .3)
+		}
+
+		body.nb .tabs {
+			border: 2px solid var(--ink)
+		}
+
+		body.nb .tabs button {
+			background: var(--paper);
+			color: var(--ink)
+		}
+
+		body.nb .tabs button.on,
+		body.nb .x {
+			background: var(--ink);
+			color: #fff
+		}
+
+		body.nb .sheet {
+			border: 2px solid var(--ink)
+		}
+
+		body.nb .sheet th,
+		body.nb .sheet td {
+			border-color: #c4ad80
+		}
+
+		body.nb .sheet thead th.rl,
+		body.nb .sheet tr.sub th,
+		body.nb .sheet tr.sub td:not(.win),
+		body.nb .sheet tr.grand th,
+		body.nb .sheet tr.grand td:not(.win),
+		body.nb #detail-body .sheet tr.sub td:not(.win),
+		body.nb #detail-body .sheet tr.grand td:not(.win) {
+			background: var(--ink)
+		}
+
+		body.nb .sheet .rl,
+		body.nb .sheet td.cell,
+		body.nb #detail-body .sheet .rl {
+			background: var(--paper)
+		}
+
+		body.nb .sheet tr.sub th.rl,
+		body.nb .sheet tr.grand th.rl {
+			background: var(--ink)
+		}
+
+		body.nb .sheet tr.calc th,
+		body.nb .sheet tr.calc td:not(.win) {
+			background: #ece1c6
+		}
+
+		body.nb .sheet td.cell.empty {
+			background: var(--paper)
+		}
+
+		body.nb .hcard.rec {
+			background: #fff6c8
+		}
+
+		body.nb .toast {
+			background: var(--ink)
+		}
 	</style>
 </head>
 
@@ -979,7 +1120,7 @@
 	<nav>
 		<button onclick="menuClick()"><b>🏠</b>Menu</button>
 		<button onclick="openHistory()"><b>📜</b>Historique</button>
-		<button onclick="openSettings()"><b>⚙️</b>Points</button>
+		<button onclick="openSettings()"><b>⚙️</b>Config</button>
 		<button id="nav-finish" onclick="openFinish(true)" disabled><b>🏁</b>Terminer</button>
 	</nav>
 
@@ -1072,9 +1213,12 @@
 	<div id="settings-modal" class="modal">
 		<div class="box">
 			<div class="mh">
-				<h3 class="t" style="margin:0">⚙️ Points des combinaisons</h3><button class="x"
+				<h3 class="t" style="margin:0">⚙️ Configuration</h3><button class="x"
 					onclick="closeM('settings-modal')">✕</button>
 			</div>
+			<label class="l" style="margin-top:0">Thème</label>
+			<div class="grid grid2"><button class="btn" id="th-checker" onclick="setTheme('checker')">♟ Damier</button><button class="btn" id="th-nb" onclick="setTheme('nb')">📓 Carnet</button></div>
+			<label class="l">Points des combinaisons</label>
 			<div class="grid grid2">
 				<div><label class="l">Full</label><input type="number" inputmode="numeric" id="st-full"></div>
 				<div><label class="l">GS</label><input type="number" inputmode="numeric" id="st-gs"></div>
@@ -1542,13 +1686,13 @@
 			const h=hist().sort((a,b) => sk(b).localeCompare(sk(a))||b.id-a.id),gmax=maxScore();
 			$('hist-count').innerText=`${h.length} partie${h.length>1? 's':''} jouée${h.length>1? 's':''} au total`;
 			$('f-all').classList.toggle('on',histFilter==='all'); $('f-top').classList.toggle('on',histFilter==='top'); $('f-month').classList.toggle('on',histFilter==='month');
-			const top=histFilter==='top',list=top? h.filter(m => maxOf(m)!=null).sort((a,b) => maxOf(b)-maxOf(a)||sk(a).localeCompare(sk(b))).slice(0,3):h;
+			const top=histFilter==='top',topE=top? h.flatMap(m => m.players.filter(p => typeof p.total==='number').map(p => ({m,p}))).sort((a,b) => b.p.total-a.p.total||sk(a.m).localeCompare(sk(b.m))).slice(0,3):[],list=top? topE.map(e => e.m):h;
 			const card=(m,ix) =>
 			{
 				const mx=maxOf(m);
 				const rec=mx!=null&&mx===gmax;
 				return `<div class="card hcard${rec? ' rec':''}"><div class="top"><span>${fmtDT(m)}</span><span>${rec? '<span class="tag">🔥 RECORD</span> ':''}${mx!=null? 'Max : '+mx+' pts':'Score non saisi'}</span></div>
-    ${top? `<div style="display:flex;align-items:center;gap:10px;border:3px solid #000;border-radius:12px;padding:6px 12px;margin-bottom:8px;background:${['#fde047','#e5e7eb','#fdba74'][ix]}"><span style="font-size:40px">${['🥇','🥈','🥉'][ix]}</span><div style="flex:1;min-width:0"><div style="display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:3px solid #000;border-radius:10px;padding:2px 12px;font-size:24px;font-weight:900;${pstyle(m.players.find(p => p.total===mx).name)}">${esc(m.players.find(p => p.total===mx).name)}</div><div style="font-size:30px;font-weight:900;line-height:1.1">${mx} <span style="font-size:14px;font-weight:800">pts</span></div></div><span style="font-size:22px;font-weight:900">#${ix+1}</span></div>`:''}
+    ${top? `<div style="display:flex;align-items:center;gap:10px;border:3px solid #000;border-radius:12px;padding:6px 12px;margin-bottom:8px;background:${['#fde047','#e5e7eb','#fdba74'][ix]}"><span style="font-size:40px">${['🥇','🥈','🥉'][ix]}</span><div style="flex:1;min-width:0"><div style="display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:3px solid #000;border-radius:10px;padding:2px 12px;font-size:24px;font-weight:900;${pstyle(topE[ix].p.name)}">${esc(topE[ix].p.name)}</div><div style="font-size:30px;font-weight:900;line-height:1.1">${topE[ix].p.total} <span style="font-size:14px;font-weight:800">pts</span></div></div><span style="font-size:22px;font-weight:900">#${ix+1}</span></div>`:''}
     <div style="font-weight:900;font-size:16px">🏆 ${esc(m.winner)}</div>
     <div>${winFirst(m).map(p => `<span class="chip ${p.name===m.winner? 'w':''}" style="${pstyle(p.name)}">${p.name===m.winner? '🏆 ':''}${esc(p.name)}${typeof p.total==='number'? ' · '+p.total+(p.total===mx? ' 👑':''):''}</span>`).join('')}</div>
     ${m.comment? `<div style="font-size:12px;font-style:italic;margin-top:4px">💬 ${esc(m.comment)}</div>`:''}
@@ -1635,9 +1779,19 @@
 		}
 		function saveComment(id,v) {const h=hist(),m=h.find(x => x.id===id); if(m) {m.comment=v.trim(); jset(K.HIST,h); renderHistory(); toast('Commentaire enregistré')} }
 
+		/* ---------- thème ---------- */
+		function syncThemeBtns() {const nb=document.body.classList.contains('nb'); $('th-nb').classList.toggle('alt',!nb); $('th-checker').classList.toggle('alt',nb)}
+		function setTheme(t)
+		{
+			document.body.classList.toggle('nb',t==='nb'); localStorage.setItem('yams_theme',t);
+			document.querySelector('meta[name=theme-color]').content=t==='nb'? '#1e3a8a':'#000000'; syncThemeBtns();
+		}
+		setTheme(localStorage.getItem('yams_theme')||'checker');
+
 		/* ---------- réglages ---------- */
 		function openSettings()
 		{
+			syncThemeBtns();
 			$('st-full').value=settings.pts.full; $('st-gs').value=settings.pts.gs; $('st-ps').value=settings.pts.ps; $('st-yams').value=settings.pts.yams;
 			$('st-thr').value=settings.thr; $('st-bonus').value=settings.bonus; openM('settings-modal');
 		}
