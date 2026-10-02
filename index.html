@@ -508,7 +508,7 @@
 
 		.sheet tr.sub th,
 		.sheet tr.sub td {
-			background: #000;
+			background: #000;Option 2 : comptes séparés, avec un fichier partagé (nécessite du code)
 			color: #fff
 		}
 
@@ -960,6 +960,7 @@
 					onchange="importBackup(event)">
 				<button class="btn gold" id="sync-btn" style="width:100%;margin-top:8px" onclick="syncClick()">☁ Se
 					connecter à Google Drive</button>
+				<button class="btn alt" style="width:100%;margin-top:8px" onclick="shareClick()">👥 Partager avec un autre compte</button>
 				<p id="sync-status" style="font-size:12px;font-weight:700;margin:6px 0 0">Synchronisation désactivée</p>
 				<p style="font-size:11px;margin:8px 0 0;opacity:.7">Données stockées dans le navigateur : exportez
 					régulièrement.</p>
@@ -1134,7 +1135,7 @@
 				<h3 class="t" id="pr-title" style="margin:0"></h3><button class="x"
 					onclick="closeM('prompt-modal')">✕</button>
 			</div>
-			<input id="pr-input" maxlength="30" onkeydown="if(event.key==='Enter')promptOk()">
+			<input id="pr-input" maxlength="80" onkeydown="if(event.key==='Enter')promptOk()">
 			<div class="grid grid2" style="margin-top:12px"><button class="btn alt"
 					onclick="closeM('prompt-modal')">Annuler</button><button class="btn"
 					onclick="promptOk()">Valider</button></div>
@@ -1726,8 +1727,8 @@
 		}
 
 		/* ---------- synchro Google Drive ---------- */
-		const CID='247129530373-otell6t5pgg182o3oiiq2u57ma3557tl.apps.googleusercontent.com',SCOPE='https://www.googleapis.com/auth/drive.appdata',FNAME='yams-data.json';
-		let tc=null,tok=null,tokExp=0,needAuth=false,lastTry=0,busy=false,again=false,syncT=0;
+		const CID='247129530373-otell6t5pgg182o3oiiq2u57ma3557tl.apps.googleusercontent.com',SCOPE='https://www.googleapis.com/auth/drive',FNAME='yams-shared.json';
+		let sharedId=null,tc=null,tok=null,tokExp=0,needAuth=false,lastTry=0,busy=false,again=false,syncT=0;
 		function setSync(ok,msg) {$('sync-status').innerText=msg; $('sync-btn').innerText=ok? '☁ Synchroniser maintenant':'☁ Se connecter à Google Drive'}
 		function gsiReady()
 		{
@@ -1763,6 +1764,16 @@
 			applying=false; localStorage.setItem(K.TS,m.ts);
 			if(!game) {renderHome(); renderSelects(currentNames())} else $('home-podium').innerHTML=podiumHtml(bests());
 		}
+		async function shareClick()
+		{
+			if(!tok||Date.now()>tokExp) return toast('Connectez-vous d\'abord');
+			if(!sharedId) {await syncNow(); if(!sharedId) return toast('Synchronisation impossible')}
+			askText('Email Google du partenaire',async v =>
+			{
+				try {await api(`https://www.googleapis.com/drive/v3/files/${sharedId}/permissions?sendNotificationEmail=false`,{method: 'POST',headers: {'Content-Type': 'application/json'},body: JSON.stringify({type: 'user',role: 'writer',emailAddress: v})}); toast('Fichier partagé avec '+v)}
+				catch(e) {toast('Partage impossible')}
+			});
+		}
 		async function syncNow()
 		{
 			if(busy) {again=true; return }
@@ -1770,14 +1781,16 @@
 			busy=true; setSync(true,'Synchronisation…');
 			try
 			{
-				const q=encodeURIComponent(`name='${FNAME}'`);
-				const l=await (await api(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id)`)).json();
-				const id=l.files[0]&&l.files[0].id;
-				const remote=id? await (await api(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`)).json():null;
-				const m=mergeData(snap(),remote); applyData(m);
+				const q=encodeURIComponent(`name='${FNAME}' and trashed=false`);
+				const l=await (await api(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime&fields=files(id)`)).json();
+				const id=l.files[0]&&l.files[0].id; sharedId=id||null;
+				let m=snap();
+				// Plusieurs fichiers possibles (créés avant le partage) : on fusionne tout dans le plus ancien
+				for(const f of l.files) m=mergeData(m,await (await api(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`)).json());
+				applyData(m);
 				const json=JSON.stringify(m);
 				if(id) await api(`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`,{method: 'PATCH',headers: {'Content-Type': 'application/json'},body: json});
-				else {const b='yamsb'; await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method: 'POST',headers: {'Content-Type': 'multipart/related; boundary='+b},body: `--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({name: FNAME,parents: ['appDataFolder']})}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${json}\r\n--${b}--`})}
+				else {const b='yamsb'; sharedId=(await (await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method: 'POST',headers: {'Content-Type': 'multipart/related; boundary='+b},body: `--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({name: FNAME})}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${json}\r\n--${b}--`})).json()).id}
 				setSync(true,'Synchronisé à '+nowTime());
 			} catch(e) {setSync(false,e.message==='auth'? 'Reconnexion requise : touchez le bouton':'Erreur de synchronisation')}
 			busy=false; if(again) {again=false; scheduleSync()}
