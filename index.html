@@ -1795,7 +1795,7 @@
 			document.body.classList.toggle('nb',t==='nb'); localStorage.setItem('yams_theme',t); log('Thème',t);
 			document.querySelector('meta[name=theme-color]').content=t==='nb'? '#1e3a8a':'#000000'; syncThemeBtns();
 		}
-		setTheme(localStorage.getItem('yams_theme')||'checker');
+		setTheme(localStorage.getItem('yams_theme')||'nb');
 
 		/* ---------- réglages ---------- */
 		function openSettings()
