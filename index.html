@@ -1498,6 +1498,29 @@
 			showScreen('home');
 		}
 		function menuClick() {game? openM('menu-modal'):renderHome()}
+		function handleAppBack()
+		{
+			if($('celebration').classList.contains('show')) closeCel();
+			else
+			{
+				const modals=[...document.querySelectorAll('.modal.show')].sort((a,b) =>
+				{
+					const z=(parseInt(getComputedStyle(b).zIndex,10)||0)-(parseInt(getComputedStyle(a).zIndex,10)||0);
+					return z||(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING? 1:-1);
+				});
+				if(modals.length)
+				{
+					const id=modals[0].id;
+					if(id==='detail-modal') closeDetail();
+					else if(id==='confirm-modal') confirmNo();
+					else if(id==='players-modal') closePlayers();
+					else closeM(id);
+				}
+				else if(!$('game').classList.contains('hidden')) renderHome();
+				else return;
+			}
+			history.pushState({yamsApp: true}, '', location.href);
+		}
 		function quitSave() {log('Partie sauvegardée pour plus tard'); jset(K.STATE,game); game=null; closeM('menu-modal'); renderHome(); toast('Partie sauvegardée')}
 		function quitDiscard() {log('Partie abandonnée'); localStorage.removeItem(K.STATE); game=null; closeM('menu-modal'); renderHome(); toast('Partie annulée')}
 
@@ -1992,6 +2015,8 @@
 		{const h=hist(); if(h.map(fixWinner).some(Boolean)) jset(K.HIST,h)}
 		setCount(count); renderHome();
 		if(jget(K.STATE,null)) resumeGame();
+		window.addEventListener('popstate',handleAppBack);
+		history.pushState({yamsApp: true}, '', location.href);
 	</script>
 	<script src="https://accounts.google.com/gsi/client" async defer onload="gsiReady()"></script>
 </body>
