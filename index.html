@@ -404,6 +404,10 @@
 			color: #14532d
 		}
 
+		#category-body .sheet thead th {
+			position: static
+		}
+
 		#detail-body .sheet {
 			border: 3px solid #111;
 			border-radius: 16px;
@@ -1262,6 +1266,17 @@
 		</div>
 	</div>
 
+	<!-- MOYENNES PAR CATEGORIE -->
+	<div id="category-modal" class="modal" onclick="if(event.target===this)closeM('category-modal')">
+		<div class="box wide">
+			<div class="mh">
+				<h3 class="t" style="margin:0">📊 Efficacité par catégorie</h3><button class="x"
+					onclick="closeM('category-modal')">✕</button>
+			</div>
+			<div id="category-body"></div>
+		</div>
+	</div>
+
 	<!-- CONFIRMATION -->
 	<div id="confirm-modal" class="modal" onclick="if(event.target===this)confirmNo()">
 		<div class="box" style="text-align:center">
@@ -1368,8 +1383,8 @@
 			return `<table class="sheet"><thead><tr><th class="rl"></th>${head}</tr></thead><tbody>
     ${UP.map(inRow).join('')}
     ${cRow(`TOTAL<small>${r.thr} = +${r.bonus}</small>`,x => x.up,'calc')}
-    ${sRow('TOTAL HAUT','haut','sub')}
     ${cRow(`BONUS +${r.bonus}`,x => x.bonus? '+'+x.bonus:'–','calc')}
+	${sRow('TOTAL HAUT','haut','sub')}
     ${LOW.map(inRow).join('')}
     ${sRow('TOTAL BAS','bas','sub')}
     ${cRow('TOTAL',(x,i) => {const t=o.totals? (o.totals[i]==null? '–':o.totals[i]):x.total; return t+(o.recTotal!=null&&t===o.recTotal? ' <span class="star">★</span>':'')},'grand')}
@@ -1498,6 +1513,17 @@
 			showScreen('home');
 		}
 		function menuClick() {game? openM('menu-modal'):renderHome()}
+		function initAppBackNavigation()
+		{
+			const guardState={yamsAppBackGuard: true};
+			history.replaceState(guardState,'',location.href);
+			history.pushState(guardState,'',location.href);
+			window.addEventListener('popstate',() =>
+			{
+				history.pushState(guardState,'',location.href);
+				handleAppBack();
+			});
+		}
 		function handleAppBack()
 		{
 			if($('celebration').classList.contains('show')) closeCel();
@@ -1517,9 +1543,7 @@
 					else closeM(id);
 				}
 				else if(!$('game').classList.contains('hidden')) renderHome();
-				else return;
 			}
-			history.pushState({yamsApp: true}, '', location.href);
 		}
 		function quitSave() {log('Partie sauvegardée pour plus tard'); jset(K.STATE,game); game=null; closeM('menu-modal'); renderHome(); toast('Partie sauvegardée')}
 		function quitDiscard() {log('Partie abandonnée'); localStorage.removeItem(K.STATE); game=null; closeM('menu-modal'); renderHome(); toast('Partie annulée')}
@@ -1687,7 +1711,7 @@
 			if(bad>=0) return toast(`${fin.players[bad].name} : ${t[bad]} dépasse le maximum possible (${mt})`);
 			const m={
 				id: Date.now(),date: $('fin-date').value||null,time: $('fin-date').value? ($('fin-time').value||null):null,winner,comment: $('fin-comment').value.trim(),
-				rules: {thr: settings.thr,bonus: settings.bonus},
+				rules: {thr: settings.thr,bonus: settings.bonus,pts: {...settings.pts}},
 				players: fin.players.map((p,i) => ({name: p.name,total: t[i],throws: fin.live&&p.throws? p.throws:null,cells: fin.live? (c => {if(fin.fill) [...UP,...LOW].forEach(k => {if(c[k]===undefined) c[k]=0}); return c})(JSON.parse(JSON.stringify(p.cells))):null}))
 			};
 			const h=hist(); h.unshift(m); jset(K.HIST,h);
@@ -1743,24 +1767,98 @@
 			const s={};
 			h.forEach(m => m.players.forEach(p =>
 			{
-				const x=s[p.name]||(s[p.name]={n: p.name,g: 0,w: 0,sum: 0,k: 0,best: null,bd: null,y: 0});
+				const x=s[p.name]||(s[p.name]={n: p.name,g: 0,w: 0,sum: 0,k: 0,best: null,bd: null,y: 0,bonusGames: 0,bonusEligible: 0,bestUp: null,bestLow: null});
 				x.g++; if(m.winner===p.name) x.w++;
 				if(typeof p.total==='number') {x.sum+=p.total; x.k++; if(x.best===null||p.total>x.best) {x.best=p.total; x.bd=m.date} }
 				if(p.cells&&p.cells.yams>0) x.y++;
+				if(p.cells)
+				{
+					const totals=calc(p.cells,m.rules||settings);
+					x.bonusEligible++; if(totals.bonus>0) x.bonusGames++;
+					x.bestUp=x.bestUp===null? totals.haut:Math.max(x.bestUp,totals.haut);
+					x.bestLow=x.bestLow===null? totals.bas:Math.max(x.bestLow,totals.bas);
+				}
 			}));
 			const l=Object.values(s).sort((a,b) => (b.best??-1)-(a.best??-1)||b.w-a.w);
+			const elo=eloRatings(h);
+			l.forEach(x =>
+			{
+				const streaks=playerStreaks(x.n,h);
+				x.longest=streaks.longest; x.elo=Math.round(elo[x.n]||1000);
+			});
 			const mxOf=f => Math.max(...l.map(f).map(v => v==null? -1:v));
-			const M={g: mxOf(x => x.g),w: mxOf(x => x.w),r: mxOf(x => Math.round(x.w/x.g*100)),b: mxOf(x => x.best),a: mxOf(x => x.k? Math.round(x.sum/x.k):null),y: mxOf(x => x.y)};
+			const M={g: mxOf(x => x.g),w: mxOf(x => x.w),r: mxOf(x => Math.round(x.w/x.g*100)),b: mxOf(x => x.best),a: mxOf(x => x.k? Math.round(x.sum/x.k):null),y: mxOf(x => x.y),streak: mxOf(x => x.longest),elo: mxOf(x => x.elo),bonus: mxOf(x => x.bonusEligible? Math.round(x.bonusGames/x.bonusEligible*100):null),up: mxOf(x => x.bestUp),low: mxOf(x => x.bestLow)};
 			const cell=(a,b,best,rec) => `<div style="border:2px solid ${rec? '#b45309':best? '#16a34a':'#000'};background:${rec? '#fde047':best? '#dcfce7':'#fff'};border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;font-weight:800;text-transform:uppercase">${a}</div><div style="font-size:${rec? 24:18}px;font-weight:900">${b}${rec? ' 👑':best? ' ▲':''}</div></div>`;
 			const holders=l.filter(x => x.best!=null&&x.best===gmax&&gmax>0);
 			const banner=holders.length? `<div class="card" style="background:var(--gold);text-align:center"><div style="font-size:12px;font-weight:900;letter-spacing:1px">👑 RECORD ABSOLU 👑</div><div style="font-size:48px;font-weight:900;line-height:1.1">${gmax}</div><div>${holders.map(x => `<span class="chip" style="${pstyle(x.n)};font-size:16px">${esc(x.n)}</span>`).join('')}</div><div style="font-size:12px;font-weight:700;margin-top:4px">${holders.map(x => x.bd? fmtDate(x.bd):'date inconnue').join(' · ')}</div></div>`:'';
-			$('hist-players').innerHTML=l.length? banner+l.map(x =>
+			const categoryButton=`<button class="btn alt" style="width:100%;margin-bottom:10px" onclick="openCategoryAverages()">📊 Efficacité par catégorie</button>`;
+			$('hist-players').innerHTML=categoryButton+(l.length? banner+l.map(x =>
 			{
-				const isH=holders.includes(x),rate=Math.round(x.w/x.g*100),avg=x.k? Math.round(x.sum/x.k):null;
+				const isH=holders.includes(x),rate=Math.round(x.w/x.g*100),avg=x.k? Math.round(x.sum/x.k):null,bonusRate=x.bonusEligible? Math.round(x.bonusGames/x.bonusEligible*100):null;
 				return `<div class="card hcard${isH? ' rec':''}"><div style="display:flex;justify-content:space-between;align-items:center;font-weight:900;font-size:17px;margin-bottom:6px;border-radius:8px;padding:4px 10px;${pstyle(x.n)}"><span>${esc(x.n)}</span>${isH? '<span class="tag" style="background:#fde047;color:#000">👑 DÉTENTEUR DU RECORD</span>':''}</div>
-    <div class="grid grid3">${cell('Record',x.best!=null? x.best:'–',false,isH)}${cell('Moyenne',avg!=null? avg:'–',avg!=null&&avg===M.a)}${cell('Victoires',x.w,x.w===M.w&&x.w>0)}${cell('Défaites',x.g-x.w,false)}${cell('% victoire',rate+'%',rate===M.r&&rate>0)}${cell('Nb parties',x.g,x.g===M.g)}${cell('YAMS',x.y,x.y===M.y&&x.y>0)}</div>
-    ${x.bd? `<div style="font-size:11px;margin-top:6px">Meilleur score le ${fmtDate(x.bd)}</div>`:''}${streakHtml(x.n,h)}</div>`
-			}).join(''):'<p style="text-align:center;font-size:13px">Aucune donnée.</p>';
+	    <div class="grid grid3">${cell('Record',x.best!=null? x.best:'–',false,isH)}${cell('Moyenne',avg!=null? avg:'–',avg!=null&&avg===M.a)}${cell('ELO',x.elo,x.elo===M.elo)}${cell('Victoires',x.w,x.w===M.w&&x.w>0)}${cell('Défaites',x.g-x.w,false)}${cell('% victoire',rate+'%',rate===M.r&&rate>0)}${cell('Nb parties',x.g,x.g===M.g)}${cell('YAMS',x.y,x.y===M.y&&x.y>0)}${cell('Plus longue série',x.longest,x.longest===M.streak&&x.longest>0)}${cell('% bonus haut',bonusRate===null? '–':bonusRate+'%',bonusRate!==null&&bonusRate===M.bonus&&bonusRate>0)}${cell('Meilleur total haut',x.bestUp===null? '–':x.bestUp,x.bestUp!==null&&x.bestUp===M.up)}${cell('Meilleur total bas',x.bestLow===null? '–':x.bestLow,x.bestLow!==null&&x.bestLow===M.low)}</div>
+	${x.bd? `<div style="font-size:11px;margin-top:6px">Meilleur score le ${fmtDate(x.bd)}</div>`:''}${streakHtml(x.n,h)}</div>`
+			}).join(''):'<p style="text-align:center;font-size:13px">Aucune donnée.</p>');
+		}
+		function playerStreaks(name,h)
+		{
+			let current=0,longest=0;
+			[...h].sort((a,b) => sk(a).localeCompare(sk(b))||a.id-b.id).forEach(m =>
+			{
+				const p=m.players.find(x => x.name===name); if(!p) return;
+				if(m.winner===name) {current++; longest=Math.max(longest,current)} else current=0;
+			});
+			return {longest,current};
+		}
+		function eloRatings(h)
+		{
+			const ratings={};
+			[...h].sort((a,b) => sk(a).localeCompare(sk(b))||a.id-b.id).forEach(m =>
+			{
+				const players=m.players.filter(p => p.name);
+				players.forEach(p => {if(ratings[p.name]===undefined) ratings[p.name]=1000});
+				const delta={}; players.forEach(p => delta[p.name]=0);
+				for(let i=0;i<players.length;i++) for(let j=i+1;j<players.length;j++)
+				{
+					const a=players[i],b=players[j],ra=ratings[a.name],rb=ratings[b.name];
+					let actualA;
+					if(typeof a.total==='number'&&typeof b.total==='number') actualA=a.total===b.total? .5:a.total>b.total? 1:0;
+					else actualA=m.winner===a.name? 1:m.winner===b.name? 0:.5;
+					const expectedA=1/(1+Math.pow(10,(rb-ra)/400)),change=32*(actualA-expectedA);
+					delta[a.name]+=change; delta[b.name]-=change;
+				}
+				players.forEach(p => {ratings[p.name]+=delta[p.name]});
+			});
+			return ratings;
+		}
+		function openCategoryAverages()
+		{
+			const matches=hist(),players=known().filter(name => matches.some(m => m.players.some(p => p.name===name)));
+			const caseMaximum=(key,m) =>
+			{
+				if(UP.includes(key)) return +key*5;
+				if(key==='brelan'||key==='carre'||key==='plus') return 30;
+				if(key==='minus') return 29;
+				return (m.rules&&m.rules.pts||settings.pts)[key]||0;
+			};
+			const rows=[...UP,...LOW].map(key =>
+			{
+				const vals=players.map(name =>
+				{
+					const totals=matches.reduce((sum,m) =>
+					{
+						const p=m.players.find(x => x.name===name);
+						if(!p||!p.cells||typeof p.cells[key]!=='number') return sum;
+						sum.score+=p.cells[key]; sum.maximum+=caseMaximum(key,m); sum.played++;
+						return sum;
+					},{score: 0,maximum: 0,played: 0});
+					return totals.played&&totals.maximum>0? Math.round(totals.score/totals.maximum*100):null;
+				});
+				const best=Math.max(-1,...vals.map(v => v===null? -1:v));
+				return `<tr><th class="rl">${rowLabel(key)}</th>${vals.map(value => `<td class="${value!==null&&value===best?'best':''}"><span class="v">${value===null?'–':value+'%'}</span></td>`).join('')}</tr>`;
+			}).join('');
+			$('category-body').innerHTML=players.length? `<p style="font-size:12px;font-weight:700;margin:0 0 10px">Points marqués ÷ points maximum. Exemple : 6/10 sur la case des 2 = 60 %.</p><div style="overflow-x:auto"><table class="sheet"><thead><tr><th class="rl"></th>${players.map(name => `<th style="${pstyle(name)}"><div class="pn">${esc(name)}</div></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#bbf7d0;padding:1px 8px">vert</span> meilleure efficacité par catégorie. Les cases non jouées ne sont pas comptabilisées.</p>`:'<p style="text-align:center">Aucune catégorie détaillée enregistrée.</p>';
+			openM('category-modal');
 		}
 		// Série signée : +n = n victoires d'affilée, −n = n défaites d'affilée
 		const streakOpp={};
@@ -1771,30 +1869,50 @@
 			const all=[...h].reverse().filter(m => m.players.some(p => p.name===name));
 			const opps=[...new Set(all.flatMap(m => m.players.map(p => p.name)).filter(n => n!==name))];
 			const seq=opp? all.filter(m => m.players.some(p => p.name===opp)&&(m.winner===name||m.winner===opp)):all;
-			if(!opp&&seq.length<2) return '';
+			if(!seq.length) return '';
 			const sel=`<select data-n="${esc(name)}" onchange="setOpp(this)" style="width:100%;margin:4px 0"><option value="">Contre tous les adversaires</option>${opps.map(o => `<option value="${esc(o)}"${o===opp? ' selected':''}>Contre ${esc(o)}</option>`).join('')}</select>`;
 			const nw=seq.filter(m => m.winner===name).length,nl=seq.length-nw;
 			const rec=`<div style="display:flex;gap:6px;margin:4px 0;font-weight:900;font-size:15px;text-align:center"><div style="flex:1;background:#dcfce7;border:2px solid #16a34a;border-radius:8px;padding:4px">${nw} victoire${nw>1? 's':''}</div><div style="flex:1;background:#fee2e2;border:2px solid var(--red);border-radius:8px;padding:4px">${nl} défaite${nl>1? 's':''}</div></div><div style="font-size:11px;font-weight:700">${opp? 'contre '+esc(opp):'contre tous les adversaires'}</div>`;
 			const head=`<div class="stk" style="margin-top:8px;border-top:2px dashed #000;padding-top:6px"><div style="font-size:12px;font-weight:800">📈 Série victoires / défaites (${seq.length} parties)</div>${sel}${rec}`;
-			if(seq.length<2) return head+'<div style="font-size:12px;font-weight:700">Pas assez de parties.</div></div>';
 			const pts=[]; let cur=0,bw=0,bs=0,be=0,st=0;
 			seq.forEach((m,i) =>
 			{
 				if(m.winner===name) {if(cur>0) cur++; else {cur=1; st=i} } else cur=cur<0? cur-1:-1;
-				pts.push(cur); if(cur>bw) {bw=cur; bs=st; be=i}
+				const player=m.players.find(p => p.name===name),score=player? (typeof player.total==='number'? player.total:player.cells? calc(player.cells,m.rules||settings).total:null):null;
+				pts.push({streak: cur,score,match: m}); if(cur>bw) {bw=cur; bs=st; be=i}
 			});
-			const W=320,H=180,L=26,mx=Math.max(3,...pts.map(Math.abs)),n=pts.length,Z=H/2-6;
-			const X=i => L+8+i*(W-L-16)/(n-1),Y=v => Z-v/mx*(Z-14);
-			const line=(a,b) => pts.slice(a,b+1).map((v,k) => `${X(a+k).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
-			const bars=`<polyline points="${line(0,n-1)}" fill="none" stroke="#000" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${bw>0? `<polyline points="${line(bs,be)}" fill="none" stroke="#f59e0b" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>`:''}`+pts.map((v,i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${n>25? 2.5:4}" fill="${v>0? '#22c55e':'#ef4444'}" stroke="#000" stroke-width="1.2"/>${n<=16? `<text x="${X(i).toFixed(1)}" y="${(v>0? Y(v)-7:Y(v)+14).toFixed(1)}" font-size="9" font-weight="800" text-anchor="middle">${Math.abs(v)}</text>`:''}`).join('');
-			const ticks=Array.from({length: 2*mx+1},(_,k) => k-mx).filter(v => mx<=6||v%2===0).map(v => `<line x1="${L}" x2="${W}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="${v===0? '#000':'#ddd'}" stroke-width="${v===0? 1.5:.5}"/><text x="${L-3}" y="${(Y(v)+3).toFixed(1)}" font-size="9" font-weight="700" text-anchor="end">${v>0? '+'+v:v}</text>`).join('');
-			const step=Math.max(1,Math.ceil(n/10)),xl=pts.map((_,i) => (i===0||i===n-1||(i+1)%step===0)? `<text x="${X(i).toFixed(1)}" y="${H-3}" font-size="9" font-weight="700" text-anchor="middle">${i+1}</text>`:'').join('');
+			const W=360,H=190,L=38,R=38,T=24,B=27,n=pts.length,mx=Math.max(1,...pts.map(p => Math.abs(p.streak))),scores=pts.map(p => p.score).filter(v => typeof v==='number');
+			const scoreMin=scores.length? Math.min(...scores):0,scoreMax=scores.length? Math.max(...scores):1,pad=Math.max((scoreMax-scoreMin)*.12,5),lo=Math.max(0,scoreMin-pad),hi=Math.max(scoreMax+pad,lo+1);
+			const X=i => n===1? (L+W-R)/2:L+i*(W-L-R)/(n-1),YS=v => H-B-(v-lo)/(hi-lo)*(H-T-B),YT=v => T+(mx-v)/(2*mx)*(H-T-B);
+			const ticks=[0,.5,1].map(r =>
+			{
+				const y=T+r*(H-T-B),score=Math.round(hi-r*(hi-lo)),streak=Math.round(mx*(1-2*r));
+				return `<line x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${r===.5? '#777':'#ddd'}" stroke-width="${r===.5? 1.2:.7}"/><text x="${L-5}" y="${(y+3).toFixed(1)}" font-size="9" font-weight="700" text-anchor="end">${score}</text><text x="${W-R+5}" y="${(y+3).toFixed(1)}" font-size="9" font-weight="700">${streak>0? '+':''}${streak}</text>`
+			}).join('');
+			const streakLine=pts.map((p,i) => `${X(i).toFixed(1)},${YT(p.streak).toFixed(1)}`).join(' '),bestLine=pts.slice(bs,be+1).map((p,k) => `${X(bs+k).toFixed(1)},${YT(p.streak).toFixed(1)}`).join(' ');
+			const streakDots=pts.map((p,i) => `<circle cx="${X(i).toFixed(1)}" cy="${YT(p.streak).toFixed(1)}" r="${n>25? 2.5:4}" fill="${p.streak>0? '#22c55e':'#ef4444'}" stroke="#000" stroke-width="1.2"><title>Partie ${i+1} · ${esc(fmtDT(p.match))} · série ${p.streak>0? '+':''}${p.streak}</title></circle>`).join('');
+			const segments=[]; let segment=[];
+			pts.forEach((p,i) => {if(p.score===null) {if(segment.length) segments.push(segment); segment=[]} else segment.push({p,i})});
+			if(segment.length) segments.push(segment);
+			const scoreLines=segments.filter(s => s.length>1).map(s =>
+			{
+				let path=`M ${X(s[0].i).toFixed(1)} ${YS(s[0].p.score).toFixed(1)}`;
+				for(let i=1;i<s.length;i++)
+				{
+					const prev=s[i-1],next=s[i],x1=X(prev.i),x2=X(next.i),mid=(x1+x2)/2,y1=YS(prev.p.score),y2=YS(next.p.score);
+					path+=` C ${mid.toFixed(1)} ${y1.toFixed(1)}, ${mid.toFixed(1)} ${y2.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+				}
+				return `<path d="${path}" fill="none" stroke="#2563eb" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+			}).join('');
+			const scoreDots=pts.map((p,i) => p.score===null? '':`<circle cx="${X(i).toFixed(1)}" cy="${YS(p.score).toFixed(1)}" r="4" fill="#2563eb" stroke="#fff" stroke-width="1.5"><title>Partie ${i+1} · ${esc(fmtDT(p.match))} · ${p.score} pts</title></circle>${n<=12? `<text x="${X(i).toFixed(1)}" y="${(YS(p.score)-8).toFixed(1)}" font-size="9" font-weight="900" text-anchor="middle">${p.score}</text>`:''}`).join('');
+			const step=Math.max(1,Math.ceil(n/7)),xl=pts.map((_,i) => i===0||i===n-1||i%step===0? `<text x="${X(i).toFixed(1)}" y="${H-5}" font-size="9" font-weight="700" text-anchor="middle">#${i+1}</text>`:'').join('');
 			const d=m => m.date? fmtDate(m.date):'?';
-			const last=pts[n-1];
+			const last=pts[n-1].streak;
 			return head+`
-  <svg viewBox="0 0 ${W} ${H}" style="width:100%;background:#fff;border:2px solid #000;border-radius:8px;margin-top:4px">${ticks}${bars}${xl}<text x="${L+2}" y="9" font-size="8" font-weight="800" fill="#15803d">▲ victoires d'affilée</text><text x="${W-2}" y="${H-14}" font-size="8" font-weight="800" fill="#b91c1c" text-anchor="end">▼ défaites d'affilée</text></svg>
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Scores et séries de ${esc(name)} par partie" style="width:100%;background:#fff;border:2px solid #000;border-radius:8px;margin-top:4px"><title>Scores et séries de ${esc(name)} par partie</title><text x="${L}" y="15" font-size="9" font-weight="800" fill="#1d4ed8">Score (pts)</text><text x="${W-R}" y="15" font-size="9" font-weight="800" fill="#166534" text-anchor="end">Série</text>${ticks}${scoreLines}<polyline points="${streakLine}" fill="none" stroke="#111827" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${bw>0? `<polyline points="${bestLine}" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`:''}${scoreDots}${streakDots}${xl}</svg>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:10px;font-weight:800;margin-top:3px"><span style="color:#2563eb">━ Score · axe gauche</span><span style="color:#166534">━ Série victoires/défaites · axe droit</span></div>
   <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700"><span>Partie 1 · ${d(seq[0])}</span><span>Partie ${n} · ${d(seq[n-1])}</span></div>
-  <div style="font-size:12px;font-weight:700;margin-top:4px">🔥 Plus longue série : ${bw} victoire${bw>1? 's':''} d'affilée${bw>0? ` (${d(seq[bs])}${bs!==be? ' → '+d(seq[be]):''})`:''}<br>Série actuelle : ${last>0? last+' victoire(s)':Math.abs(last)+' défaite(s)'}</div></div>`;
+				<div style="font-size:12px;font-weight:700;margin-top:4px">Série actuelle : ${last>0? last+' victoire(s)':Math.abs(last)+' défaite(s)'}</div></div>`;
 		}
 		function deleteMatch(id) {askConfirm('Supprimer cette partie ?','Action définitive.','Supprimer',() => {log('Partie supprimée',id); jset(K.DEL,[...jget(K.DEL,[]),id]); jset(K.HIST,hist().filter(m => m.id!==id)); renderHistory(); renderHome()})}
 		function clearHistory() {askConfirm("Effacer l'historique ?",'Toutes les parties seront supprimées. Action définitive.','Tout effacer',() => {log('Historique effacé'); jset(K.DEL,[...jget(K.DEL,[]),...hist().map(m => m.id)]); jset(K.HIST,[]); renderHistory(); renderHome()})}
@@ -2015,8 +2133,7 @@
 		{const h=hist(); if(h.map(fixWinner).some(Boolean)) jset(K.HIST,h)}
 		setCount(count); renderHome();
 		if(jget(K.STATE,null)) resumeGame();
-		window.addEventListener('popstate',handleAppBack);
-		history.pushState({yamsApp: true}, '', location.href);
+		initAppBackNavigation();
 	</script>
 	<script src="https://accounts.google.com/gsi/client" async defer onload="gsiReady()"></script>
 </body>
