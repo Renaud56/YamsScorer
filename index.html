@@ -329,8 +329,35 @@
 			font-weight: 900
 		}
 
+		@property --tca {
+			syntax: '<percentage>';
+			inherits: false;
+			initial-value: 12%
+		}
+
+		@keyframes tcPulse {
+			to {
+				--tca: 32%
+			}
+		}
+
+		/* --pc = current player's colour, set on the table */
+		.sheet td.tc {
+			animation: tcPulse 1s ease-in-out infinite alternate;
+			box-shadow: inset 6px 0 0 var(--pc), inset -6px 0 0 var(--pc)
+		}
+
+		.sheet td.cell.tc,
+		.sheet tr.calc td.tc {
+			background: color-mix(in srgb, var(--pc) var(--tca), #fff) !important
+		}
+
 		.sheet thead th.turn {
-			box-shadow: inset 0 0 0 4px #fff
+			box-shadow: inset 0 5px 0 #fff, inset 5px 0 0 #fff, inset -5px 0 0 #fff, inset 0 11px 0 var(--pc), inset 11px 0 0 var(--pc), inset -11px 0 0 var(--pc)
+		}
+
+		.sheet tr.grand td.tc {
+			box-shadow: inset 6px 0 0 var(--pc), inset -6px 0 0 var(--pc), inset 0 -6px 0 var(--pc)
 		}
 
 		.sheet .tt {
@@ -404,8 +431,23 @@
 			color: #14532d
 		}
 
-		#category-body .sheet thead th {
+		#category-body .sheet thead th,
+		#hist-fame .sheet thead th {
 			position: static
+		}
+
+		#hist-fame .sheet .rl {
+			width: 130px;
+			white-space: normal;
+			font-size: 12px;
+			line-height: 1.15
+		}
+
+		#hist-fame .sheet .rl small {
+			display: block;
+			margin: 0;
+			font-size: 9px;
+			opacity: .72
 		}
 
 		#detail-body .sheet {
@@ -673,6 +715,40 @@
 		.kp .btn {
 			font-size: 24px;
 			padding: 14px 0
+		}
+
+		#cell-body .grid {
+			gap: 10px
+		}
+
+		#cell-body .btn {
+			font-size: 28px;
+			font-weight: 900;
+			min-height: 80px
+		}
+
+		#cell-body .btn small {
+			font-size: 14px
+		}
+
+		#cell-body .kp .btn {
+			font-size: 32px;
+			min-height: 72px
+		}
+
+		#cell-body .kp-disp {
+			font-size: 42px;
+			min-height: 72px
+		}
+
+		#cell-body .btn.red {
+			font-size: 17px;
+			min-height: 56px
+		}
+
+		#cell-body input[type=checkbox] {
+			width: 28px !important;
+			height: 28px !important
 		}
 
 		.btn small {
@@ -1243,13 +1319,15 @@
 					onclick="closeM('history-modal')">✕</button>
 			</div>
 			<div class="tabs"><button id="tab-games" class="on" onclick="switchTab('games')">Parties</button><button
-					id="tab-players" onclick="switchTab('players')">Joueurs</button></div>
+					id="tab-players" onclick="switchTab('players')">Joueurs</button><button id="tab-fame"
+					onclick="switchTab('fame')">Hall of fame</button></div>
 			<div id="hist-filter" class="tabs"><button id="f-all" class="on" onclick="setFilter('all')">Toutes les
 					parties</button><button id="f-top" onclick="setFilter('top')">🏆 Top 3 scores</button><button
 					id="f-month" onclick="setFilter('month')">📅 Par mois</button></div>
 			<div id="hist-count" style="text-align:center;font-weight:900;font-size:14px;margin-bottom:8px"></div>
 			<div id="hist-games" class="grid"></div>
 			<div id="hist-players" class="grid hidden"></div>
+			<div id="hist-fame" class="hidden"></div>
 			<button class="btn red" style="width:100%;margin-top:12px;font-size:12px;padding:8px"
 				onclick="clearHistory()">🗑 Effacer l'historique</button>
 		</div>
@@ -1365,22 +1443,23 @@
 			const c=players.map(p => calc(p.cells,r));
 			const w=i => o.winner===players[i].name? ' win':'';
 			const ti=o.live&&players.length>1? c.findIndex(x => x.filled<Math.max(...c.map(y => y.filled))):-1,turn=ti>=0? ti:(o.live&&players.length>1&&c.some(x => x.filled<NCELLS)? 0:-1);
+			const tc=i => i===turn? ' tc':'';
 			const head=players.map((p,i) => {const t=o.totals? o.totals[i]:c[i].total; return `<th class="${(w(i)+(i===turn? ' turn':'')).trim()}" style="${pstyle(p.name)}${w(i)? `;box-shadow:inset 0 -6px 0 ${pcol(p.name)[0]}`:''}"><div class="pn">${w(i)? '★ ':''}${esc(p.name)}</div><div class="pt">${t==null? '–':t}</div>${i===turn? '<span class="tt">▶ SON TOUR</span>':''}${o.recTotal!=null&&t===o.recTotal? '<div class="rtag">★ RECORD</div>':''}</th>`}).join('');
 			const inRow=k =>
 			{
 				const mx=Math.max(0,...players.map(p => p.cells&&typeof p.cells[k]==='number'? p.cells[k]:0)); return `<tr><th class="rl">${rowLabel(k)}</th>${players.map((p,i) =>
 				{
 					const v=p.cells? p.cells[k]:undefined;
-					return `<td class="cell${v===undefined? ' empty':v===0? ' zero':''}${w(i)}${warn(p,k)? ' warn':''}${!o.live&&k!=='minus'&&mx>0&&v===mx&&players.length>1? ' best':''}" ${o.live? `data-p="${i}" data-r="${k}"`:''}>${'<span class="v">'+(v===undefined? '':v===0? '✕':v)+'</span>'+(p.throws&&p.throws[k]&&v>0? `<sup style="font-size:10px">${p.throws[k]==='first'? '⭐':'⏱️'}</sup>`:'')}</td>`
+					return `<td class="cell${v===undefined? ' empty':v===0? ' zero':''}${w(i)}${tc(i)}${warn(p,k)? ' warn':''}${!o.live&&k!=='minus'&&mx>0&&v===mx&&players.length>1? ' best':''}" ${o.live? `data-p="${i}" data-r="${k}"`:''}>${'<span class="v">'+(v===undefined? '':v===0? '✕':v)+'</span>'+(p.throws&&p.throws[k]&&v>0? `<sup style="font-size:10px">${p.throws[k]==='first'? '⭐':'⏱️'}</sup>`:'')}</td>`
 				}).join('')}</tr>`
 			};
 			const sRow=(label,key,cls) =>
 			{
 				const mx=Math.max(...c.map(x => x[key])),hl=!o.live&&players.length>1&&mx>0;
-				return `<tr class="${cls}"><th class="rl">${label}</th>${c.map((x,i) => `<td class="${(w(i)+(hl&&x[key]===mx? ' best':'')).trim()}"><span class="v">${x[key]}</span></td>`).join('')}</tr>`
+				return `<tr class="${cls}"><th class="rl">${label}</th>${c.map((x,i) => `<td class="${(w(i)+tc(i)+(hl&&x[key]===mx? ' best':'')).trim()}"><span class="v">${x[key]}</span></td>`).join('')}</tr>`
 			};
-			const cRow=(label,fn,cls) => `<tr class="${cls}"><th class="rl">${label}</th>${c.map((x,i) => `<td class="${w(i).trim()}">${fn(x,i)}</td>`).join('')}</tr>`;
-			return `<table class="sheet"><thead><tr><th class="rl"></th>${head}</tr></thead><tbody>
+			const cRow=(label,fn,cls) => `<tr class="${cls}"><th class="rl">${label}</th>${c.map((x,i) => `<td class="${(w(i)+tc(i)).trim()}">${fn(x,i)}</td>`).join('')}</tr>`;
+			return `<table class="sheet"${turn>=0? ` style="--pc:${pcol(players[turn].name)[0]}"`:''}><thead><tr><th class="rl"></th>${head}</tr></thead><tbody>
     ${UP.map(inRow).join('')}
     ${cRow(`TOTAL<small>${r.thr} = +${r.bonus}</small>`,x => x.up,'calc')}
     ${cRow(`BONUS +${r.bonus}`,x => x.bonus? '+'+x.bonus:'–','calc')}
@@ -1733,7 +1812,7 @@
 		function switchTab(t)
 		{
 			$('hist-filter').classList.toggle('hidden',t!=='games');
-			['games','players'].forEach(x => {$('tab-'+x).classList.toggle('on',x===t); $('hist-'+x).classList.toggle('hidden',x!==t)});
+			['games','players','fame'].forEach(x => {$('tab-'+x).classList.toggle('on',x===t); $('hist-'+x).classList.toggle('hidden',x!==t)});
 		}
 		let histFilter='all'; const monthOpen={};
 		function setFilter(f) {histFilter=f; renderHistory()}
@@ -1800,6 +1879,23 @@
 	    <div class="grid grid3">${cell('Record',x.best!=null? x.best:'–',false,isH)}${cell('Moyenne',avg!=null? avg:'–',avg!=null&&avg===M.a)}${cell('ELO',x.elo,x.elo===M.elo)}${cell('Victoires',x.w,x.w===M.w&&x.w>0)}${cell('Défaites',x.g-x.w,false)}${cell('% victoire',rate+'%',rate===M.r&&rate>0)}${cell('Nb parties',x.g,x.g===M.g)}${cell('YAMS',x.y,x.y===M.y&&x.y>0)}${cell('Plus longue série',x.longest,x.longest===M.streak&&x.longest>0)}${cell('% bonus haut',bonusRate===null? '–':bonusRate+'%',bonusRate!==null&&bonusRate===M.bonus&&bonusRate>0)}${cell('Meilleur total haut',x.bestUp===null? '–':x.bestUp,x.bestUp!==null&&x.bestUp===M.up,false,'Max possible : '+maxUp)}${cell('Meilleur total bas',x.bestLow===null? '–':x.bestLow,x.bestLow!==null&&x.bestLow===M.low,false,'Max possible : '+maxLow)}</div>
 	${x.bd? `<div style="font-size:11px;margin-top:6px">Meilleur score le ${fmtDate(x.bd)}</div>`:''}${streakHtml(x.n,h)}</div>`
 			}).join(''):'<p style="text-align:center;font-size:13px">Aucune donnée.</p>');
+			const avgOf=x => x.k? Math.round(x.sum/x.k):null,rateOf=x => Math.round(x.w/x.g*100),bonusOf=x => x.bonusEligible? Math.round(x.bonusGames/x.bonusEligible*100):null;
+			const fame=[
+				['Record',x => x.best??'–',() => false,x => holders.includes(x),'Max possible : '+maxTotal()],
+				['Moyenne',x => avgOf(x)??'–',x => avgOf(x)!=null&&avgOf(x)===M.a],
+				['ELO',x => x.elo,x => x.elo===M.elo],
+				['Victoires',x => x.w,x => x.w===M.w&&x.w>0],
+				['Défaites',x => x.g-x.w,() => false],
+				['% victoire',x => rateOf(x)+'%',x => rateOf(x)===M.r&&rateOf(x)>0],
+				['Nb parties',x => x.g,x => x.g===M.g],
+				['YAMS',x => x.y,x => x.y===M.y&&x.y>0],
+				['Plus longue série',x => x.longest,x => x.longest===M.streak&&x.longest>0],
+				['% bonus haut',x => bonusOf(x)===null? '–':bonusOf(x)+'%',x => bonusOf(x)!==null&&bonusOf(x)===M.bonus&&bonusOf(x)>0],
+				['Meilleur total haut',x => x.bestUp??'–',x => x.bestUp!==null&&x.bestUp===M.up,() => false,'Max possible : '+maxUp],
+				['Meilleur total bas',x => x.bestLow??'–',x => x.bestLow!==null&&x.bestLow===M.low,() => false,'Max possible : '+maxLow]
+			];
+			const fameCell=(v,best,rec) => `<td style="${rec? 'background:#fde047;box-shadow:inset 0 0 0 2px #b45309':best? 'background:#dcfce7;box-shadow:inset 0 0 0 2px #16a34a':''}">${v}${rec? ' 👑':best? ' ▲':''}</td>`;
+			$('hist-fame').innerHTML=l.length? `<div style="overflow-x:auto"><table class="sheet" style="min-width:${130+l.length*80}px"><thead><tr><th class="rl"></th>${l.map(x => `<th style="${pstyle(x.n)}"><div class="pn">${esc(x.n)}</div></th>`).join('')}</tr></thead><tbody>${fame.map(([label,val,best,rec=() => false,detail]) => `<tr><th class="rl">${label}${detail? `<small>${detail}</small>`:''}</th>${l.map(x => fameCell(val(x),best(x),rec(x))).join('')}</tr>`).join('')}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#dcfce7;border:2px solid #16a34a;border-radius:6px;padding:0 6px">▲ vert</span> meilleur indicateur · <span style="background:#fde047;border:2px solid #b45309;border-radius:6px;padding:0 6px">👑 jaune</span> record absolu</p>`:'<p style="text-align:center;font-size:13px">Aucune donnée.</p>';
 		}
 		function playerStreaks(name,h)
 		{
