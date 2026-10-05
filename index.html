@@ -1981,7 +1981,25 @@
 		}
 		// Série signée : +n = n victoires d'affilée, −n = n défaites d'affilée
 		const streakOpp={};
+		const streakView={};
 		function setOpp(el) {const n=el.dataset.n; streakOpp[n]=el.value; el.closest('.stk').outerHTML=streakHtml(n,hist().sort((a,b) => sk(b).localeCompare(sk(a))||b.id-a.id))}
+		function streakControl(el,action)
+		{
+			const key=el.dataset.graph,state=streakView[key],max=+el.dataset.max;
+			if(action==='start') state.start=+el.value;
+			else if(action==='end') state.end=+el.value;
+			else
+			{
+				const span=state.end-state.start+1,center=(state.start+state.end)/2;
+				const next=action==='in'? Math.max(2,Math.ceil(span*.6)):action==='out'? Math.min(max+1,Math.ceil(span/0.6)):span;
+				const shift=action==='left'? -Math.max(1,Math.ceil(span/2)):action==='right'? Math.max(1,Math.ceil(span/2)):0;
+				if(shift) {state.start=Math.max(0,Math.min(max+1-span,state.start+shift)); state.end=state.start+span-1}
+				else {state.start=Math.max(0,Math.min(max+1-next,Math.floor(center-(next-1)/2))); state.end=state.start+next-1}
+			}
+			if(state.start>=state.end) {if(action==='start') state.start=Math.max(0,state.end-1); else state.end=Math.min(max,state.start+1)}
+			const root=el.closest('.stk'),name=root.dataset.name;
+			root.outerHTML=streakHtml(name,hist().sort((a,b) => sk(b).localeCompare(sk(a))||b.id-a.id));
+		}
 		function streakHtml(name,h)
 		{
 			const opp=streakOpp[name]||'';
@@ -1992,15 +2010,21 @@
 			const sel=`<select data-n="${esc(name)}" onchange="setOpp(this)" style="width:100%;margin:4px 0"><option value="">Contre tous les adversaires</option>${opps.map(o => `<option value="${esc(o)}"${o===opp? ' selected':''}>Contre ${esc(o)}</option>`).join('')}</select>`;
 			const nw=seq.filter(m => m.winner===name).length,nl=seq.length-nw;
 			const rec=`<div style="display:flex;gap:6px;margin:4px 0;font-weight:900;font-size:15px;text-align:center"><div style="flex:1;background:#dcfce7;border:2px solid #16a34a;border-radius:8px;padding:4px">${nw} victoire${nw>1? 's':''}</div><div style="flex:1;background:#fee2e2;border:2px solid var(--red);border-radius:8px;padding:4px">${nl} défaite${nl>1? 's':''}</div></div><div style="font-size:11px;font-weight:700">${opp? 'contre '+esc(opp):'contre tous les adversaires'}</div>`;
-			const head=`<div class="stk" style="margin-top:8px;border-top:2px dashed #000;padding-top:6px"><div style="font-size:12px;font-weight:800">📈 Série victoires / défaites (${seq.length} parties)</div>${sel}${rec}`;
-			const pts=[]; let cur=0,bw=0,bs=0,be=0,st=0;
+			const graphKey=encodeURIComponent(JSON.stringify([name,opp]));
+			const view=streakView[graphKey]||(streakView[graphKey]={start:Math.max(0,seq.length-20),end:seq.length-1});
+			view.start=Math.max(0,Math.min(view.start,Math.max(0,seq.length-2))); view.end=Math.max(view.start,Math.min(view.end,seq.length-1));
+			const dateAt=i => seq[i].date? fmtDate(seq[i].date):'?';
+			const rangeControl=(part,index,label) => `<label style="display:grid;grid-template-columns:24px minmax(0,1fr) 58px;align-items:center;gap:4px;font-size:9px;line-height:1;font-weight:800"><span>${label}</span><input type="range" min="0" max="${seq.length-1}" value="${index}" data-graph="${graphKey}" data-max="${seq.length-1}" onchange="streakControl(this,'${part}')" style="width:100%;height:14px;margin:0"><span style="text-align:right">${dateAt(index)}</span></label>`;
+			const zoom=seq.length>1? `<div style="margin:4px 0 2px"><div style="display:flex;gap:3px;justify-content:flex-end;margin-bottom:2px"><button class="btn alt" style="padding:1px 7px;min-height:24px;border-width:2px;font-size:12px;line-height:1" aria-label="Parties précédentes" onclick="streakControl(this,'left')" data-graph="${graphKey}" data-max="${seq.length-1}">‹</button><button class="btn alt" style="padding:1px 7px;min-height:24px;border-width:2px;font-size:12px;line-height:1" aria-label="Zoom arrière" onclick="streakControl(this,'out')" data-graph="${graphKey}" data-max="${seq.length-1}">−</button><button class="btn alt" style="padding:1px 7px;min-height:24px;border-width:2px;font-size:12px;line-height:1" aria-label="Zoom avant" onclick="streakControl(this,'in')" data-graph="${graphKey}" data-max="${seq.length-1}">+</button><button class="btn alt" style="padding:1px 7px;min-height:24px;border-width:2px;font-size:12px;line-height:1" aria-label="Parties récentes" onclick="streakControl(this,'right')" data-graph="${graphKey}" data-max="${seq.length-1}">›</button></div>${rangeControl('start',view.start,'Du')}${rangeControl('end',view.end,'Au')}</div>`:'';
+			const head=`<div class="stk" data-name="${esc(name)}" style="margin-top:8px;border-top:2px dashed #000;padding-top:6px"><div style="font-size:12px;font-weight:800">📈 Série victoires / défaites (${seq.length} parties)</div>${sel}${rec}`;
+			const pts=[]; let cur=0;
 			seq.forEach((m,i) =>
 			{
-				if(m.winner===name) {if(cur>0) cur++; else {cur=1; st=i} } else cur=cur<0? cur-1:-1;
+				if(m.winner===name) cur=cur>0? cur+1:1; else cur=cur<0? cur-1:-1;
 				const player=m.players.find(p => p.name===name),score=player? (typeof player.total==='number'? player.total:player.cells? calc(player.cells,m.rules||settings).total:null):null;
-				pts.push({streak: cur,score,match: m}); if(cur>bw) {bw=cur; bs=st; be=i}
+				pts.push({streak: cur,score,match: m});
 			});
-			const W=360,H=190,L=38,R=38,T=24,B=27,n=pts.length,mx=Math.max(1,...pts.map(p => Math.abs(p.streak))),scores=pts.map(p => p.score).filter(v => typeof v==='number');
+			const visible=pts.slice(view.start,view.end+1),W=360,H=190,L=38,R=38,T=24,B=27,n=visible.length,mx=Math.max(1,...visible.map(p => Math.abs(p.streak))),scores=visible.map(p => p.score).filter(v => typeof v==='number');
 			const scoreMin=scores.length? Math.min(...scores):0,scoreMax=scores.length? Math.max(...scores):1,pad=Math.max((scoreMax-scoreMin)*.12,5),lo=Math.max(0,scoreMin-pad),hi=Math.max(scoreMax+pad,lo+1);
 			const X=i => n===1? (L+W-R)/2:L+i*(W-L-R)/(n-1),YS=v => H-B-(v-lo)/(hi-lo)*(H-T-B),YT=v => T+(mx-v)/(2*mx)*(H-T-B);
 			const ticks=[0,.5,1].map(r =>
@@ -2008,10 +2032,13 @@
 				const y=T+r*(H-T-B),score=Math.round(hi-r*(hi-lo)),streak=Math.round(mx*(1-2*r));
 				return `<line x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${r===.5? '#777':'#ddd'}" stroke-width="${r===.5? 1.2:.7}"/><text x="${L-5}" y="${(y+3).toFixed(1)}" font-size="9" font-weight="700" text-anchor="end">${score}</text><text x="${W-R+5}" y="${(y+3).toFixed(1)}" font-size="9" font-weight="700">${streak>0? '+':''}${streak}</text>`
 			}).join('');
-			const streakLine=pts.map((p,i) => `${X(i).toFixed(1)},${YT(p.streak).toFixed(1)}`).join(' '),bestLine=pts.slice(bs,be+1).map((p,k) => `${X(bs+k).toFixed(1)},${YT(p.streak).toFixed(1)}`).join(' ');
-			const streakDots=pts.map((p,i) => `<circle cx="${X(i).toFixed(1)}" cy="${YT(p.streak).toFixed(1)}" r="${n>25? 2.5:4}" fill="${p.streak>0? '#22c55e':'#ef4444'}" stroke="#000" stroke-width="1.2"><title>Partie ${i+1} · ${esc(fmtDT(p.match))} · série ${p.streak>0? '+':''}${p.streak}</title></circle>`).join('');
+			const streakLine=visible.map((p,i) => `${X(i).toFixed(1)},${YT(p.streak).toFixed(1)}`).join(' ');
+			let bestVisible=0,bestStart=0,bestEnd=0,runStart=0,run=0;
+			visible.forEach((p,i) => {if(p.streak>0) {run=run? run+1:1; if(run>bestVisible) {bestVisible=run; bestStart=runStart; bestEnd=i}} else {run=0; runStart=i+1}});
+			const bestLine=visible.slice(bestStart,bestEnd+1).map((p,i) => `${X(bestStart+i).toFixed(1)},${YT(p.streak).toFixed(1)}`).join(' ');
+			const streakDots=visible.map((p,i) => `<circle cx="${X(i).toFixed(1)}" cy="${YT(p.streak).toFixed(1)}" r="${n>25? 2.5:4}" fill="${p.streak>0? '#22c55e':'#ef4444'}" stroke="#000" stroke-width="1.2"><title>Partie ${view.start+i+1} · ${esc(fmtDT(p.match))} · série ${p.streak>0? '+':''}${p.streak}</title></circle>`).join('');
 			const segments=[]; let segment=[];
-			pts.forEach((p,i) => {if(p.score===null) {if(segment.length) segments.push(segment); segment=[]} else segment.push({p,i})});
+			visible.forEach((p,i) => {if(p.score===null) {if(segment.length) segments.push(segment); segment=[]} else segment.push({p,i})});
 			if(segment.length) segments.push(segment);
 			const scoreLines=segments.filter(s => s.length>1).map(s =>
 			{
@@ -2023,14 +2050,14 @@
 				}
 				return `<path d="${path}" fill="none" stroke="#2563eb" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`;
 			}).join('');
-			const scoreDots=pts.map((p,i) => p.score===null? '':`<circle cx="${X(i).toFixed(1)}" cy="${YS(p.score).toFixed(1)}" r="4" fill="#2563eb" stroke="#fff" stroke-width="1.5"><title>Partie ${i+1} · ${esc(fmtDT(p.match))} · ${p.score} pts</title></circle>${n<=12? `<text x="${X(i).toFixed(1)}" y="${(YS(p.score)-8).toFixed(1)}" font-size="9" font-weight="900" text-anchor="middle">${p.score}</text>`:''}`).join('');
-			const step=Math.max(1,Math.ceil(n/7)),xl=pts.map((_,i) => i===0||i===n-1||i%step===0? `<text x="${X(i).toFixed(1)}" y="${H-5}" font-size="9" font-weight="700" text-anchor="middle">#${i+1}</text>`:'').join('');
+			const scoreDots=visible.map((p,i) => p.score===null? '':`<circle cx="${X(i).toFixed(1)}" cy="${YS(p.score).toFixed(1)}" r="4" fill="#2563eb" stroke="#fff" stroke-width="1.5"><title>Partie ${view.start+i+1} · ${esc(fmtDT(p.match))} · ${p.score} pts</title></circle>${n<=12? `<text x="${X(i).toFixed(1)}" y="${(YS(p.score)-8).toFixed(1)}" font-size="9" font-weight="900" text-anchor="middle">${p.score}</text>`:''}`).join('');
+			const step=Math.max(1,Math.ceil(n/7)),xl=visible.map((_,i) => i===0||i===n-1||i%step===0? `<text x="${X(i).toFixed(1)}" y="${H-5}" font-size="9" font-weight="700" text-anchor="middle">#${view.start+i+1}</text>`:'').join('');
 			const d=m => m.date? fmtDate(m.date):'?';
-			const last=pts[n-1].streak;
+			const last=pts[pts.length-1].streak;
 			return head+`
-  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Scores et séries de ${esc(name)} par partie" style="width:100%;background:#fff;border:2px solid #000;border-radius:8px;margin-top:4px"><title>Scores et séries de ${esc(name)} par partie</title><text x="${L}" y="15" font-size="9" font-weight="800" fill="#1d4ed8">Score (pts)</text><text x="${W-R}" y="15" font-size="9" font-weight="800" fill="#166534" text-anchor="end">Série</text>${ticks}${scoreLines}<polyline points="${streakLine}" fill="none" stroke="#111827" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${bw>0? `<polyline points="${bestLine}" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`:''}${scoreDots}${streakDots}${xl}</svg>
+	<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Scores et séries de ${esc(name)} par partie" style="width:100%;background:#fff;border:2px solid #000;border-radius:8px;margin-top:4px"><title>Scores et séries de ${esc(name)} par partie</title><text x="${L}" y="15" font-size="9" font-weight="800" fill="#1d4ed8">Score (pts)</text><text x="${W-R}" y="15" font-size="9" font-weight="800" fill="#166534" text-anchor="end">Série</text>${ticks}${scoreLines}<polyline points="${streakLine}" fill="none" stroke="#111827" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${bestVisible>1? `<polyline points="${bestLine}" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`:''}${scoreDots}${streakDots}${xl}</svg>${zoom}
   <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:10px;font-weight:800;margin-top:3px"><span style="color:#2563eb">━ Score · axe gauche</span><span style="color:#166534">━ Série victoires/défaites · axe droit</span></div>
-  <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700"><span>Partie 1 · ${d(seq[0])}</span><span>Partie ${n} · ${d(seq[n-1])}</span></div>
+  <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700"><span>Partie ${view.start+1} · ${d(visible[0].match)}</span><span>Partie ${view.end+1} · ${d(visible[n-1].match)}</span></div>
 				<div style="font-size:12px;font-weight:700;margin-top:4px">Série actuelle : ${last>0? last+' victoire(s)':Math.abs(last)+' défaite(s)'}</div></div>`;
 		}
 		function deleteMatch(id) {askConfirm('Supprimer cette partie ?','Action définitive.','Supprimer',() => {log('Partie supprimée',id); jset(K.DEL,[...jget(K.DEL,[]),id]); jset(K.HIST,hist().filter(m => m.id!==id)); renderHistory(); renderHome()})}
