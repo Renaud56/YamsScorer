@@ -437,10 +437,11 @@
 		}
 
 		#hist-fame .sheet .rl {
-			width: 130px;
+			width: 76px;
+			padding: 0 4px;
 			white-space: normal;
-			font-size: 12px;
-			line-height: 1.15
+			font-size: 11px;
+			line-height: 1.1
 		}
 
 		#hist-fame .sheet .rl small {
@@ -448,6 +449,27 @@
 			margin: 0;
 			font-size: 9px;
 			opacity: .72
+		}
+
+		#hist-fame .sheet thead th {
+			height: 40px;
+			padding: 0 2px
+		}
+
+		#hist-fame .sheet .pn {
+			font-size: 14px
+		}
+
+		#hist-fame .sheet td {
+			font-size: 15px;
+			height: 38px;
+			white-space: nowrap;
+			overflow: hidden
+		}
+
+		#hist-fame .sheet td sup {
+			font-size: 9px;
+			margin-left: 1px
 		}
 
 		#detail-body .sheet {
@@ -1881,7 +1903,7 @@
 			}).join(''):'<p style="text-align:center;font-size:13px">Aucune donnée.</p>');
 			const avgOf=x => x.k? Math.round(x.sum/x.k):null,rateOf=x => Math.round(x.w/x.g*100),bonusOf=x => x.bonusEligible? Math.round(x.bonusGames/x.bonusEligible*100):null;
 			const fame=[
-				['Record',x => x.best??'–',() => false,x => holders.includes(x),'Max possible : '+maxTotal()],
+				['Record',x => x.best??'–',() => false,x => holders.includes(x),'max '+maxTotal()],
 				['Moyenne',x => avgOf(x)??'–',x => avgOf(x)!=null&&avgOf(x)===M.a],
 				['ELO',x => x.elo,x => x.elo===M.elo],
 				['Victoires',x => x.w,x => x.w===M.w&&x.w>0],
@@ -1889,13 +1911,13 @@
 				['% victoire',x => rateOf(x)+'%',x => rateOf(x)===M.r&&rateOf(x)>0],
 				['Nb parties',x => x.g,x => x.g===M.g],
 				['YAMS',x => x.y,x => x.y===M.y&&x.y>0],
-				['Plus longue série',x => x.longest,x => x.longest===M.streak&&x.longest>0],
+				['Série max',x => x.longest,x => x.longest===M.streak&&x.longest>0],
 				['% bonus haut',x => bonusOf(x)===null? '–':bonusOf(x)+'%',x => bonusOf(x)!==null&&bonusOf(x)===M.bonus&&bonusOf(x)>0],
-				['Meilleur total haut',x => x.bestUp??'–',x => x.bestUp!==null&&x.bestUp===M.up,() => false,'Max possible : '+maxUp],
-				['Meilleur total bas',x => x.bestLow??'–',x => x.bestLow!==null&&x.bestLow===M.low,() => false,'Max possible : '+maxLow]
+				['Meilleur haut',x => x.bestUp??'–',x => x.bestUp!==null&&x.bestUp===M.up,() => false,'max '+maxUp],
+				['Meilleur bas',x => x.bestLow??'–',x => x.bestLow!==null&&x.bestLow===M.low,() => false,'max '+maxLow]
 			];
-			const fameCell=(v,best,rec) => `<td style="${rec? 'background:#fde047;box-shadow:inset 0 0 0 2px #b45309':best? 'background:#dcfce7;box-shadow:inset 0 0 0 2px #16a34a':''}">${v}${rec? ' 👑':best? ' ▲':''}</td>`;
-			$('hist-fame').innerHTML=l.length? `<div style="overflow-x:auto"><table class="sheet" style="min-width:${130+l.length*80}px"><thead><tr><th class="rl"></th>${l.map(x => `<th style="${pstyle(x.n)}"><div class="pn">${esc(x.n)}</div></th>`).join('')}</tr></thead><tbody>${fame.map(([label,val,best,rec=() => false,detail]) => `<tr><th class="rl">${label}${detail? `<small>${detail}</small>`:''}</th>${l.map(x => fameCell(val(x),best(x),rec(x))).join('')}</tr>`).join('')}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#dcfce7;border:2px solid #16a34a;border-radius:6px;padding:0 6px">▲ vert</span> meilleur indicateur · <span style="background:#fde047;border:2px solid #b45309;border-radius:6px;padding:0 6px">👑 jaune</span> record absolu</p>`:'<p style="text-align:center;font-size:13px">Aucune donnée.</p>';
+			const fameCell=(v,best,rec) => `<td style="${rec? 'background:#fde047;box-shadow:inset 0 0 0 2px #b45309':best? 'background:#dcfce7;box-shadow:inset 0 0 0 2px #16a34a':''}">${v}${rec? '<sup>👑</sup>':best? '<sup>▲</sup>':''}</td>`;
+			$('hist-fame').innerHTML=l.length? `<div style="overflow-x:auto"><table class="sheet"${l.length>4? ` style="min-width:${76+l.length*64}px"`:''}><thead><tr><th class="rl"></th>${l.map(x => `<th style="${pstyle(x.n)}"><div class="pn">${esc(x.n)}</div></th>`).join('')}</tr></thead><tbody>${fame.map(([label,val,best,rec=() => false,detail]) => `<tr><th class="rl">${label}${detail? `<small>${detail}</small>`:''}</th>${l.map(x => fameCell(val(x),best(x),rec(x))).join('')}</tr>`).join('')}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#dcfce7;border:2px solid #16a34a;border-radius:6px;padding:0 6px">▲ vert</span> meilleur indicateur · <span style="background:#fde047;border:2px solid #b45309;border-radius:6px;padding:0 6px">👑 jaune</span> record absolu</p>`:'<p style="text-align:center;font-size:13px">Aucune donnée.</p>';
 		}
 		function playerStreaks(name,h)
 		{
