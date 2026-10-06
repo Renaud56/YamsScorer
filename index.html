@@ -854,46 +854,67 @@
 			white-space: nowrap;
 		}
 
-		.player-form {
-			margin: 10px 0 8px;
-			padding: 14px 10px;
-			background: var(--gold);
-			border: 3px solid #000;
-			border-radius: 8px;
-			text-align: center;
-		}
-
-		.player-form strong {
-			display: block;
-			font-size: 28px;
-			line-height: 1.2;
-		}
-
-		.player-record {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
+		.player-stat-tiles {
+			display: grid;
+			grid-template-columns: repeat(4, minmax(0, 1fr));
 			gap: 8px;
-			margin: 8px 0 0;
-			padding: 9px 10px;
-			background: #fff3b0;
+			margin: 10px 0;
+		}
+
+		.player-stat-tile {
+			display: flex;
+			min-width: 0;
+			min-height: 72px;
+			flex-direction: column;
+			justify-content: space-between;
+			gap: 4px;
+			padding: 8px 10px;
+			background: #fff;
 			border: 2px solid #000;
 			border-radius: 8px;
+		}
+
+		.player-stat-tile .label {
+			font-size: 10px;
 			font-weight: 900;
+			line-height: 1.1;
+			text-transform: uppercase;
 		}
 
-		.player-record strong {
-			font-size: 24px;
-			white-space: nowrap;
+		.player-stat-tile strong {
+			font-size: 21px;
+			line-height: 1.1;
+			overflow-wrap: anywhere;
 		}
 
-		.player-quick-stats {
-			display: flex;
-			justify-content: space-between;
-			gap: 8px;
-			padding-top: 8px;
-			font-size: 12px;
-			font-weight: 800;
+		.player-stat-tile small {
+			font-size: 10px;
+			font-weight: 700;
+		}
+
+		.player-stat-tile.accent {
+			background: #fff3b0;
+		}
+
+		.player-stat-tile.form {
+			background: var(--gold);
+			border-width: 3px;
+		}
+
+		.player-stat-tile.form strong {
+			font-size: 16px;
+		}
+
+		@media (max-width: 560px) {
+			.player-stat-tiles {
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+			}
+		}
+
+		@media (max-width: 350px) {
+			.player-stat-tiles {
+				grid-template-columns: 1fr;
+			}
 		}
 
 		.fame-record {
@@ -1656,6 +1677,7 @@
 			const filled=[...UP,...LOW].filter(k => typeof cells[k]==='number').length;
 			return {up,bonus,haut,bas,total: haut+bas,filled};
 		}
+		const matchScore=(player,match) => typeof player.total==='number'? player.total:player.cells? calc(player.cells,match.rules||settings).total:null;
 		const warn=(p,k) => {const c=p.cells||{}; return (k==='plus'||k==='minus')&&typeof c.plus==='number'&&typeof c.minus==='number'&&c.plus>0&&c.minus>0&&c.plus<=c.minus};
 		const PAL=[['#c62828','#fff'],['#1565c0','#fff'],['#2e7d32','#fff'],['#ef6c00','#fff']];
 		const textOn=h => {const n=parseInt(h.slice(1),16),l=.299*(n>>16)+.587*(n>>8&255)+.114*(n&255); return l>150? '#000':'#fff'};
@@ -1701,12 +1723,12 @@
 			const b={};
 			hist().forEach(m => m.players.forEach(p =>
 			{
-				if(typeof p.total!=='number') return;
-				if(!b[p.name]||p.total>b[p.name].score) b[p.name]={name: p.name,score: p.total,date: m.date};
+				const score=matchScore(p,m); if(score===null) return;
+				if(!b[p.name]||score>b[p.name].score) b[p.name]={name: p.name,score,date: m.date};
 			}));
 			return Object.values(b).sort((a,b) => b.score-a.score).slice(0,3);
 		}
-		const maxScore=() => hist().reduce((mx,m) => m.players.reduce((a,p) => typeof p.total==='number'&&p.total>a? p.total:a,mx),0);
+		const maxScore=() => hist().reduce((mx,m) => m.players.reduce((a,p) => Math.max(a,matchScore(p,m)??0),mx),0);
 		function podiumHtml(list)
 		{
 			if(!list.length) return '<div style="text-align:center;font-size:12px;opacity:.6;font-style:italic">Aucun score enregistré</div>';
@@ -2028,7 +2050,7 @@
 		}
 
 		/* ---------- historique ---------- */
-		const maxOf=m => {const t=m.players.map(p => p.total).filter(x => typeof x==='number'); return t.length? Math.max(...t):null};
+		const maxOf=m => {const scores=m.players.map(p => matchScore(p,m)).filter(x => x!==null); return scores.length? Math.max(...scores):null};
 		function cellRecords() {const r={}; hist().forEach(m => m.players.forEach(p => {if(p.cells) for(const k in p.cells) if(p.cells[k]>(r[k]||0)) r[k]=p.cells[k]})); return r}
 		const sk=m => (m.date||new Date(m.id).toISOString().slice(0,10))+' '+(m.time||'12:00');
 		const winFirst=m => [...m.players].sort((a,b) => (b.name===m.winner)-(a.name===m.winner));
@@ -2047,15 +2069,15 @@
 			const h=hist().sort((a,b) => sk(b).localeCompare(sk(a))||b.id-a.id),gmax=maxScore();
 			$('hist-count').innerText=`${h.length} partie${h.length>1? 's':''} jouée${h.length>1? 's':''} au total`;
 			$('f-all').classList.toggle('on',histFilter==='all'); $('f-top').classList.toggle('on',histFilter==='top'); $('f-month').classList.toggle('on',histFilter==='month');
-			const top=histFilter==='top',topE=top? h.flatMap(m => m.players.filter(p => typeof p.total==='number').map(p => ({m,p}))).sort((a,b) => b.p.total-a.p.total||sk(a.m).localeCompare(sk(b.m))).slice(0,3):[],list=top? topE.map(e => e.m):h;
+			const top=histFilter==='top',topE=top? h.flatMap(m => m.players.map(p => ({m,p,score: matchScore(p,m)})).filter(e => e.score!==null)).sort((a,b) => b.score-a.score||sk(a.m).localeCompare(sk(b.m))).slice(0,3):[],list=top? topE.map(e => e.m):h;
 			const card=(m,ix) =>
 			{
 				const mx=maxOf(m);
 				const rec=mx!=null&&mx===gmax;
 				return `<div class="card hcard${rec? ' rec':''}"><div class="top"><span>${fmtDT(m)}</span><span>${rec? '<span class="tag">🔥 RECORD</span> ':''}${mx!=null? 'Max : '+mx+' pts':'Score non saisi'}</span></div>
-    ${top? `<div style="display:flex;align-items:center;gap:10px;border:3px solid #000;border-radius:12px;padding:6px 12px;margin-bottom:8px;background:${['#fde047','#e5e7eb','#fdba74'][ix]}"><span style="font-size:40px">${['🥇','🥈','🥉'][ix]}</span><div style="flex:1;min-width:0"><div style="display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:3px solid #000;border-radius:10px;padding:2px 12px;font-size:24px;font-weight:900;${pstyle(topE[ix].p.name)}">${esc(topE[ix].p.name)}</div><div style="font-size:30px;font-weight:900;line-height:1.1">${topE[ix].p.total} <span style="font-size:14px;font-weight:800">pts</span></div></div><span style="font-size:22px;font-weight:900">#${ix+1}</span></div>`:''}
+				${top? `<div style="display:flex;align-items:center;gap:10px;border:3px solid #000;border-radius:12px;padding:6px 12px;margin-bottom:8px;background:${['#fde047','#e5e7eb','#fdba74'][ix]}"><span style="font-size:40px">${['🥇','🥈','🥉'][ix]}</span><div style="flex:1;min-width:0"><div style="display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:3px solid #000;border-radius:10px;padding:2px 12px;font-size:24px;font-weight:900;${pstyle(topE[ix].p.name)}">${esc(topE[ix].p.name)}</div><div style="font-size:30px;font-weight:900;line-height:1.1">${topE[ix].score} <span style="font-size:14px;font-weight:800">pts</span></div></div><span style="font-size:22px;font-weight:900">#${ix+1}</span></div>`:''}
     <div style="font-weight:900;font-size:16px">🏆 ${esc(m.winner)}</div>
-    <div>${winFirst(m).map(p => `<span class="chip ${p.name===m.winner? 'w':''}" style="${pstyle(p.name)}">${p.name===m.winner? '🏆 ':''}${esc(p.name)}${typeof p.total==='number'? ' · '+p.total+(p.total===mx? ' 👑':''):''}</span>`).join('')}</div>
+	    <div>${winFirst(m).map(p => {const score=matchScore(p,m); return `<span class="chip ${p.name===m.winner? 'w':''}" style="${pstyle(p.name)}">${p.name===m.winner? '🏆 ':''}${esc(p.name)}${score!==null? ' · '+score+(score===mx? ' 👑':''):''}</span>`}).join('')}</div>
     ${m.comment? `<div style="font-size:12px;font-style:italic;margin-top:4px">💬 ${esc(m.comment)}</div>`:''}
     <div class="grid grid2" style="margin-top:8px;grid-template-columns:3fr 1fr"><button class="btn" style="padding:8px" onclick="openDetail(${m.id})">Détails</button><button class="btn red" style="padding:8px" onclick="deleteMatch(${m.id})">🗑</button></div></div>`
 			};
@@ -2074,7 +2096,8 @@
 			{
 				const x=s[p.name]||(s[p.name]={n: p.name,g: 0,w: 0,sum: 0,k: 0,best: null,bd: null,y: 0,bonusGames: 0,bonusEligible: 0,bestUp: null,bestLow: null});
 				x.g++; if(m.winner===p.name) x.w++;
-				if(typeof p.total==='number') {x.sum+=p.total; x.k++; if(x.best===null||p.total>x.best) {x.best=p.total; x.bd=m.date} }
+				const score=matchScore(p,m);
+				if(score!==null) {x.sum+=score; x.k++; if(x.best===null||score>x.best) {x.best=score; x.bd=m.date} }
 				if(p.cells&&p.cells.yams>0) x.y++;
 				if(p.cells)
 				{
@@ -2098,11 +2121,11 @@
 			$('hist-players').innerHTML=l.length? playerTabsHtml(l)+l.filter(x => x.n===selectedHistoryPlayer).map(x =>
 			{
 				const rate=Math.round(x.w/x.g*100),avg=x.k? Math.round(x.sum/x.k):null,isH=holders.includes(x);
+				const tile=(label,value,detail='',tone='') => `<div class="player-stat-tile${tone? ' '+tone:''}"><span class="label">${label}</span><strong>${value}</strong>${detail? `<small>${detail}</small>`:''}</div>`;
+				const form=x.current>0? '🔥 '+x.current+' victoire'+(x.current>1? 's':'')+' d’affilée':x.current<0? '🧊 '+Math.abs(x.current)+' défaite'+(x.current<-1? 's':'')+' d’affilée':'Série neutre';
 				return `<div class="card hcard"><div class="player-identity"><span>#${x.rank} ${esc(x.n)}</span><strong>${x.elo} ELO</strong></div>
-				<div class="player-form"><div style="font-size:11px;font-weight:900;text-transform:uppercase">Forme actuelle</div><strong>${x.current>0? '🔥 '+x.current+' victoire'+(x.current>1? 's':'')+' d’affilée':x.current<0? '🧊 '+Math.abs(x.current)+' défaite'+(x.current<-1? 's':'')+' d’affilée':'Série neutre'}</strong></div>
-				<div class="player-record"><span>Record max personnel${isH? ' · record absolu':''}</span><strong>${x.best===null? '–':x.best+' pts'}</strong></div>
-				<div class="player-quick-stats"><span>Moyenne : ${avg===null? '–':avg}</span><span>Victoires : ${rate}% (${x.w}/${x.g})</span></div>
-	${x.bd? `<div style="font-size:11px;margin-top:6px">Meilleur score le ${fmtDate(x.bd)}</div>`:''}${streakHtml(x.n,h)}</div>`
+				<div class="player-stat-tiles">${tile('Forme actuelle',form,'','form')}${tile('Record personnel'+(isH? ' · record absolu':''),x.best===null? '–':x.best+' pts',x.bd? 'Atteint le '+fmtDate(x.bd):'','accent')}${tile('Moyenne par partie',avg===null? '–':avg+' pts',x.k+' score'+(x.k>1? 's':'')+' enregistré'+(x.k>1? 's':''))}${tile('Taux de victoire',rate+'%',x.w+' victoire'+(x.w>1? 's':'')+' sur '+x.g+' parties')}${tile('Parties jouées',x.g)}${tile('Série maximale',x.longest,x.longest+' victoire'+(x.longest>1? 's':'')+' consécutive'+(x.longest>1? 's':''))}</div>
+	${streakHtml(x.n,h)}</div>`
 			}).join(''):'<p style="text-align:center;font-size:13px">Aucune donnée.</p>';
 			$('hist-fame').innerHTML=l.length? fameExtrasHtml(l,h,holders,gmax):'<p style="text-align:center;font-size:13px">Aucune donnée.</p>';
 		}
@@ -2128,7 +2151,7 @@
 			const pairSelect=(side,value) => side==='b'&&!famePairB? '<select aria-label="Joueur 2" disabled><option>Second joueur</option></select>':`<select aria-label="${side==='a'? 'Joueur 1':'Joueur 2'}" style="${pstyle(value)};min-width:0;font-weight:800" onchange="this.style.cssText=pstyle(this.value)+';min-width:0;font-weight:800';setFamePair('${side}',this.value)">${names.map(n => `<option value="${esc(n)}" style="background:#fff;color:#000"${n===value? ' selected':''}>${esc(n)}</option>`).join('')}</select>`;
 			const versusControls=fameMode==='versus'? `<div class="fame-pair">${pairSelect('a',famePairA)}${pairSelect('b',famePairB)}</div>`:'';
 			const pairMatches=matches.filter(m => famePairA!==famePairB&&m.players.some(p => p.name===famePairA)&&m.players.some(p => p.name===famePairB)).sort((a,b) => sk(a).localeCompare(sk(b))||a.id-b.id);
-			const versusPlayers=fameMode==='versus'&&famePairB? versusStats(pairMatches,[famePairA,famePairB]):[];
+			const versusPlayers=fameMode==='versus'&&famePairB? versusStats(pairMatches,[famePairA,famePairB],players):[];
 			const tablePlayers=fameMode==='versus'? versusPlayers:players;
 			const tableRecord=fameMode==='versus'? Math.max(0,...versusPlayers.map(x => x.best??0)):record;
 			const table=fameMode==='category'? categoryAveragesHtml():fameMode==='versus'&&!famePairB? '<p style="font-size:12px;text-align:center">Choisissez deux joueurs pour comparer leurs statistiques.</p>':fameTableHtml(tablePlayers,tableRecord);
@@ -2159,14 +2182,15 @@
 			const fameCell=(value,best,isRecord) => `<td style="${isRecord? 'background:#fde047;box-shadow:inset 0 0 0 2px #b45309':best? 'background:#dcfce7;box-shadow:inset 0 0 0 2px #16a34a':''}">${value}${isRecord? '<sup>👑</sup>':best? '<sup>▲</sup>':''}</td>`;
 			return `<div style="overflow-x:auto"><table class="sheet"${players.length>4? ` style="min-width:${76+players.length*64}px"`:''}><thead><tr><th class="rl"></th>${players.map(x => `<th style="${pstyle(x.n)}"><div class="pn">${esc(x.n)}</div></th>`).join('')}</tr></thead><tbody>${rows.map(([label,value,best,rec=() => false,detail]) => `<tr><th class="rl">${label}${detail? `<small>${detail}</small>`:''}</th>${players.map(x => fameCell(value(x),best(x),rec(x))).join('')}</tr>`).join('')}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#dcfce7;border:2px solid #16a34a;border-radius:6px;padding:0 6px">▲ vert</span> meilleur indicateur · <span style="background:#fde047;border:2px solid #b45309;border-radius:6px;padding:0 6px">👑 jaune</span> record${recordHolders.length? ' pour ce périmètre':''}</p>`;
 		}
-		function versusStats(matches,names)
+		function versusStats(matches,names,globalPlayers)
 		{
 			const ordered=[...matches].sort((a,b) => sk(a).localeCompare(sk(b))||a.id-b.id);
 			const stats=names.map(n => ({n,g: 0,w: 0,sum: 0,k: 0,best: null,bd: null,y: 0,bonusGames: 0,bonusEligible: 0,bestUp: null,bestLow: null,longest: 0,elo: 1000}));
-			const streaks=[0,0],restricted=ordered.map(m =>
+			const streaks=[0,0];
+			ordered.forEach(m =>
 			{
 				const selected=names.map(n => m.players.find(p => p.name===n));
-				const scores=selected.map(p => typeof p.total==='number'? p.total:p.cells? calc(p.cells,m.rules||settings).total:null);
+				const scores=selected.map(p => matchScore(p,m));
 				let winner=m.winner;
 				if(scores[0]!==null&&scores[1]!==null&&scores[0]!==scores[1]) winner=scores[0]>scores[1]? names[0]:names[1];
 				selected.forEach((p,i) =>
@@ -2183,10 +2207,8 @@
 						x.bestLow=x.bestLow===null? total.bas:Math.max(x.bestLow,total.bas);
 					}
 				});
-				return {...m,winner,players:selected.map((p,i) => ({...p,total: scores[i]}))};
 			});
-			const ratings=eloRatings(restricted);
-			stats.forEach(x => x.elo=Math.round(ratings[x.n]||1000));
+			stats.forEach(x => x.elo=globalPlayers.find(p => p.n===x.n)?.elo??1000);
 			return stats;
 		}
 		function playerStreaks(name,h)
@@ -2211,7 +2233,8 @@
 				{
 					const a=players[i],b=players[j],ra=ratings[a.name],rb=ratings[b.name];
 					let actualA;
-					if(typeof a.total==='number'&&typeof b.total==='number') actualA=a.total===b.total? .5:a.total>b.total? 1:0;
+					const scoreA=matchScore(a,m),scoreB=matchScore(b,m);
+					if(scoreA!==null&&scoreB!==null) actualA=scoreA===scoreB? .5:scoreA>scoreB? 1:0;
 					else actualA=m.winner===a.name? 1:m.winner===b.name? 0:.5;
 					const expectedA=1/(1+Math.pow(10,(rb-ra)/400)),change=32*(actualA-expectedA);
 					delta[a.name]+=change; delta[b.name]-=change;
@@ -2228,7 +2251,7 @@
 				if(UP.includes(key)) return +key*5;
 				if(key==='brelan'||key==='carre'||key==='plus') return 30;
 				if(key==='minus') return 29;
-				return (m.rules&&m.rules.pts||settings.pts)[key]||0;
+				return m.rules?.pts?.[key]??settings.pts[key]??0;
 			};
 			const rows=[...UP,...LOW].map(key =>
 			{
@@ -2237,8 +2260,9 @@
 					const totals=matches.reduce((sum,m) =>
 					{
 						const p=m.players.find(x => x.name===name);
-						if(!p||!p.cells||typeof p.cells[key]!=='number') return sum;
-						sum.score+=p.cells[key]; sum.maximum+=caseMaximum(key,m); sum.played++;
+						const maximum=caseMaximum(key,m);
+						if(!p||!p.cells||typeof p.cells[key]!=='number'||maximum<=0) return sum;
+						sum.score+=p.cells[key]; sum.maximum+=maximum; sum.played++;
 						return sum;
 					},{score: 0,maximum: 0,played: 0});
 					return totals.played&&totals.maximum>0? Math.round(totals.score/totals.maximum*100):null;
@@ -2290,7 +2314,7 @@
 			seq.forEach((m,i) =>
 			{
 				if(m.winner===name) cur=cur>0? cur+1:1; else cur=cur<0? cur-1:-1;
-				const player=m.players.find(p => p.name===name),score=player? (typeof player.total==='number'? player.total:player.cells? calc(player.cells,m.rules||settings).total:null):null;
+				const player=m.players.find(p => p.name===name),score=player? matchScore(player,m):null;
 				pts.push({streak: cur,score,match: m});
 			});
 			const visible=pts.slice(view.start,view.end+1),W=360,H=190,L=38,R=38,T=24,B=27,n=visible.length,mx=Math.max(1,...visible.map(p => Math.abs(p.streak))),scores=visible.map(p => p.score).filter(v => typeof v==='number');
@@ -2335,10 +2359,10 @@
 		{
 			const m=hist().find(x => x.id===id); if(!m) return;
 			$('detail-title').innerText=`${fmtDT(m)} · 🏆 ${m.winner}`;
-			const pl=winFirst(m),totals=pl.map(p => typeof p.total==='number'? p.total:p.cells? calc(p.cells,m.rules||settings).total:null);
+			const pl=winFirst(m),totals=pl.map(p => matchScore(p,m));
 			$('detail-body').innerHTML=(pl.some(p => p.cells)
 				? `<div style="overflow-x:auto">${renderSheet(pl,m.rules||settings,{winner: m.winner,totals,recTotal: maxScore()})}</div><div style="font-size:11px;font-weight:700;margin-top:8px"><span style="background:#bbf7d0;border-radius:999px;padding:1px 8px">vert</span> meilleur de la ligne · <span style="background:#fffbea;padding:1px 8px;border:1px solid #eee">jaune</span> gagnant · <span class="rtag">★ RECORD</span> meilleur total jamais atteint</div>`
-				:`<p style="font-size:12px;font-weight:700">Détail des points non saisi.</p><div>${pl.map(p => `<div class="chip ${p.name===m.winner? 'w':''}" style="${pstyle(p.name)};display:block;font-size:16px;margin-bottom:6px">${p.name===m.winner? '★ ':''}${esc(p.name)} : ${p.total!=null? p.total+' pts':'–'}</div>`).join('')}</div>`)
+				:`<p style="font-size:12px;font-weight:700">Détail des points non saisi.</p><div>${pl.map(p => `<div class="chip ${p.name===m.winner? 'w':''}" style="${pstyle(p.name)};display:block;font-size:16px;margin-bottom:6px">${p.name===m.winner? '★ ':''}${esc(p.name)} : ${matchScore(p,m)??'–'}${matchScore(p,m)!==null? ' pts':''}</div>`).join('')}</div>`)
 				+`<label class="l">Commentaire</label><textarea id="detail-comment" rows="3" maxlength="300" placeholder="Ajouter un commentaire">${esc(m.comment||'')}</textarea><button class="btn" style="margin-top:8px;width:100%" onclick="saveComment(${m.id},$('detail-comment').value)">💾 Enregistrer le commentaire</button>`;
 			closeM('history-modal'); openM('detail-modal');
 		}
