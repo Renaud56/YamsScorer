@@ -335,19 +335,19 @@
 		@property --tca {
 			syntax: '<percentage>';
 			inherits: false;
-			initial-value: 12%
+			initial-value: 5%
 		}
 
 		@keyframes tcPulse {
 			to {
-				--tca: 32%
+				--tca: 14%
 			}
 		}
 
 		/* --pc = current player's colour, set on the table */
 		.sheet td.tc {
 			animation: tcPulse 1s ease-in-out infinite alternate;
-			box-shadow: inset 6px 0 0 var(--pc), inset -6px 0 0 var(--pc)
+			box-shadow: inset 4px 0 0 var(--pc), inset -4px 0 0 var(--pc)
 		}
 
 		.sheet td.cell.tc,
@@ -360,7 +360,7 @@
 		}
 
 		.sheet tr.grand td.tc {
-			box-shadow: inset 6px 0 0 var(--pc), inset -6px 0 0 var(--pc), inset 0 -6px 0 var(--pc)
+			box-shadow: inset 4px 0 0 var(--pc), inset -4px 0 0 var(--pc), inset 0 -4px 0 var(--pc)
 		}
 
 		.sheet .tt {
