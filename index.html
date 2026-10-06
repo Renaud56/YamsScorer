@@ -804,6 +804,31 @@
 			margin: 0 0 10px;
 		}
 
+		.player-tabs button {
+			position: relative;
+		}
+
+		.player-tabs button.on {
+			box-shadow: inset 0 0 0 3px #fff;
+			font-weight: 900;
+		}
+
+		.player-tabs button.on::after {
+			content: "✓";
+			position: absolute;
+			top: 3px;
+			right: 5px;
+			width: 14px;
+			height: 14px;
+			display: grid;
+			place-items: center;
+			border-radius: 50%;
+			background: #fff;
+			color: #111;
+			font-size: 10px;
+			line-height: 1;
+		}
+
 		.player-identity {
 			display: flex;
 			align-items: center;
@@ -1509,20 +1534,75 @@
 		window.YAMS_TEST_HISTORY=(() =>
 		{
 			const baseCells={"1": 3,"2": 6,"3": 9,"4": 12,"5": 15,"6": 18,brelan: 21,carre: 24,full: 25,gs: 40,ps: 30,plus: 25,minus: 5,yams: 50};
-			const cells=changes => ({...baseCells,...changes});
-			const players=entries => entries.map(([name,total,board,throws]) => ({name,total,cells: board||null,...(throws? {throws}: {})}));
+			const caseProfiles={
+				Ren: {"1": 5,"2": 8,"3": 12,"4": 16,"5": 20,"6": 30,brelan: 20,carre: 0,full: 25,gs: 40,ps: 30,plus: 27,minus: 0,yams: 50},
+				Elo: {"1": 1,"2": 10,"3": 6,"4": 20,"5": 25,"6": 18,brelan: 27,carre: 24,full: 0,gs: 40,ps: 30,plus: 30,minus: 2,yams: 50},
+				'Licù': {"1": 3,"2": 4,"3": 9,"4": 12,"5": 20,"6": 30,brelan: 24,carre: 24,full: 25,gs: 0,ps: 30,plus: 30,minus: 22,yams: 50},
+				'Joueur 1': {"1": 2,"2": 6,"3": 15,"4": 8,"5": 10,"6": 24,brelan: 30,carre: 24,full: 25,gs: 0,ps: 30,plus: 30,minus: 29,yams: 50}
+			};
+			const cells=changes => changes;
+			const cellTotal=board => {const upper=["1","2","3","4","5","6"].reduce((sum,key) => sum+board[key],0); return upper+(upper>=63? 35:0)+['brelan','carre','full','gs','ps','plus','minus','yams'].reduce((sum,key) => sum+board[key],0)};
+			const flexible={brelan: 30,carre: 30,plus: 30,minus: 29};
+			const shuffled=values => {const result=[...values]; for(let i=result.length-1;i>0;i--) {const j=Math.floor(Math.random()*(i+1)); [result[i],result[j]]=[result[j],result[i]]} return result};
+			const randomInt=(min,max) => Math.floor(Math.random()*(max-min+1))+min;
+			const adjustFlexible=(board,amount) =>
+			{
+				for(const key of shuffled(Object.keys(flexible)))
+				{
+					const adjustment=Math.max(-board[key],Math.min(flexible[key]-board[key],amount));
+					board[key]+=adjustment; amount-=adjustment;
+				}
+				return amount===0;
+			};
+			const randomizeBoard=board =>
+			{
+				for(const [key,maximum] of [['full',25],['gs',40],['ps',30],['yams',50]])
+				{
+					if(Math.random()<0.45)
+					{
+						const before={...board}; board[key]=board[key]===maximum? 0:maximum;
+						if(!adjustFlexible(board,before[key]-board[key])) Object.assign(board,before);
+					}
+				}
+				for(let i=0;i<6;i++)
+				{
+					const key=String(randomInt(2,6)),face=+key,count=board[key]/face,next=randomInt(0,5),change=(next-count)*face,ones=board['1']-change;
+					if(ones>=0&&ones<=5) {board[key]=next*face; board['1']=ones}
+				}
+				for(let i=0;i<8;i++)
+				{
+					const [from,to]=shuffled(Object.keys(flexible)),available=Math.min(board[from],flexible[to]-board[to]);
+					if(available>0) {const points=randomInt(1,available); board[from]-=points; board[to]+=points}
+				}
+			};
+			const players=entries => entries.map(([name,total,changes,throws]) =>
+			{
+				const caseScores=changes? {...baseCells,...caseProfiles[name],...changes}:null;
+				if(caseScores)
+				{
+					adjustFlexible(caseScores,total-cellTotal(caseScores));
+					randomizeBoard(caseScores);
+				}
+				return {name,total,cells: caseScores,...(throws? {throws}: {})};
+			});
 			const match=(id,date,time,winner,entries,comment) => ({id,date,time,winner,...(comment? {comment}: {}),players: players(entries)});
 			return [
-				match(1765715400001,'2025-12-14','19:30','Ren',[['Ren',318,cells({}),{yams: 'first',full: 'last'}],['Elo',268,cells({yams: 0})]],'Partie de référence avec feuilles détaillées'),
+				match(1765715400001,'2025-12-14','19:30','Ren',[['Ren',312,cells({}),{yams: 'first',full: 'last'}],['Elo',284,cells({yams: 0})]],'Partie de référence avec feuilles détaillées'),
 				match(1767555000002,'2026-01-04','20:15','Elo',[['Elo',328,cells({minus: 15})],['Licù',268,cells({yams: 0})]]),
-				match(1768764600003,'2026-01-18','18:45','Licù',[['Ren',278],['Licù',318],['Joueur 1',293]],'Partie saisie après coup, sans détail des cases'),
-				match(1770579900004,'2026-02-08','21:05','Joueur 1',[['Joueur 1',313],['Elo',288]]),
-				match(1773595800005,'2026-03-15','19:10','Ren',[['Ren',328,cells({minus: 15})],['Elo',318,cells({})],['Licù',313,cells({plus: 20})]],'Record partagé sur une feuille complète'),
-				match(1775411700006,'2026-04-05','20:35','Elo',[['Elo',293],['Licù',278]]),
-				match(1778522700007,'2026-05-11','17:50','Joueur 1',[['Ren',288],['Joueur 1',318]]),
-				match(1782062100008,'2026-06-21','20:00','Elo',[['Ren',308],['Elo',318],['Licù',294],['Joueur 1',303]]),
-				match(1785690300009,'2026-08-02','19:25','Licù',[['Licù',318],['Joueur 1',268],['Elo',313]]),
-				match(1789933500010,'2026-09-20','18:20','Ren',[['Ren',318],['Elo',268]])
+				match(1768764600003,'2026-01-18','18:45','Licù',[['Ren',279],['Licù',316],['Joueur 1',294]],'Partie saisie après coup, sans détail des cases'),
+				match(1770579900004,'2026-02-08','21:05','Joueur 1',[['Joueur 1',307],['Elo',291]]),
+				match(1773595800005,'2026-03-15','19:10','Ren',[['Ren',328,cells({minus: 15})],['Elo',317,cells({})],['Licù',305,cells({plus: 20})]],'Record partagé sur une feuille complète'),
+				match(1775411700006,'2026-04-05','20:35','Elo',[['Elo',296],['Licù',281]]),
+				match(1778522700007,'2026-05-11','17:50','Joueur 1',[['Ren',289],['Joueur 1',321]]),
+				match(1782062100008,'2026-06-21','20:00','Elo',[['Ren',309],['Elo',322],['Licù',287],['Joueur 1',302,cells({})]]),
+				match(1785690300009,'2026-08-02','19:25','Licù',[['Licù',315],['Joueur 1',273],['Elo',299]]),
+				match(1786295100011,'2026-08-09','18:40','Ren',[['Ren',321],['Elo',288],['Licù',304]]),
+				match(1786899900012,'2026-08-16','20:10','Joueur 1',[['Joueur 1',316],['Ren',294]]),
+				match(1787504700013,'2026-08-23','19:05','Licù',[['Licù',326],['Elo',301],['Joueur 1',285]]),
+				match(1788714300014,'2026-09-06','17:55','Elo',[['Elo',319],['Ren',276],['Licù',292]]),
+				match(1789319100015,'2026-09-13','21:00','Ren',[['Ren',314],['Joueur 1',297],['Elo',306]]),
+				match(1789933500010,'2026-09-20','18:20','Ren',[['Ren',311],['Elo',278]]),
+				match(1790528700016,'2026-09-27','19:35','Licù',[['Licù',309],['Ren',287],['Joueur 1',324]])
 			];
 		})();
 	</script>
@@ -2024,7 +2104,7 @@
 		}
 		function playerTabsHtml(players)
 		{
-			return `<div class="tabs player-tabs">${players.map(x => `<button class="${x.n===selectedHistoryPlayer? 'on':''}" onclick="selectHistoryPlayer('${encodeURIComponent(x.n)}')">${esc(x.n)}</button>`).join('')}</div>`;
+			return `<div class="tabs player-tabs">${players.map(x => `<button class="${x.n===selectedHistoryPlayer? 'on':''}" style="${pstyle(x.n)}" aria-pressed="${x.n===selectedHistoryPlayer}" onclick="selectHistoryPlayer('${encodeURIComponent(x.n)}')">${esc(x.n)}</button>`).join('')}</div>`;
 		}
 		function selectHistoryPlayer(encoded) {selectedHistoryPlayer=decodeURIComponent(encoded); renderHistory()}
 		function setFamePair(side,value)
