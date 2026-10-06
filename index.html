@@ -431,7 +431,6 @@
 			color: #14532d
 		}
 
-		#category-body .sheet thead th,
 		#hist-fame .sheet thead th {
 			position: static
 		}
@@ -801,6 +800,111 @@
 			color: #fff
 		}
 
+		.player-tabs {
+			margin: 0 0 10px;
+		}
+
+		.player-identity {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 8px;
+			background: #000;
+			color: #fff;
+			border-radius: 8px;
+			padding: 10px 12px;
+			font-size: 18px;
+			font-weight: 900;
+		}
+
+		.player-identity strong {
+			color: #000;
+			background: var(--gold);
+			border-radius: 6px;
+			padding: 4px 8px;
+			white-space: nowrap;
+		}
+
+		.player-form {
+			margin: 10px 0 8px;
+			padding: 14px 10px;
+			background: var(--gold);
+			border: 3px solid #000;
+			border-radius: 8px;
+			text-align: center;
+		}
+
+		.player-form strong {
+			display: block;
+			font-size: 28px;
+			line-height: 1.2;
+		}
+
+		.player-record {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 8px;
+			margin: 8px 0 0;
+			padding: 9px 10px;
+			background: #fff3b0;
+			border: 2px solid #000;
+			border-radius: 8px;
+			font-weight: 900;
+		}
+
+		.player-record strong {
+			font-size: 24px;
+			white-space: nowrap;
+		}
+
+		.player-quick-stats {
+			display: flex;
+			justify-content: space-between;
+			gap: 8px;
+			padding-top: 8px;
+			font-size: 12px;
+			font-weight: 800;
+		}
+
+		.fame-record {
+			background: var(--gold);
+			text-align: center;
+			margin-bottom: 10px;
+		}
+
+		.fame-record-score {
+			font-size: 40px;
+			font-weight: 900;
+			line-height: 1.1;
+		}
+
+		.fame-mode {
+			margin: 0 0 8px;
+			overflow-x: auto;
+		}
+
+		.fame-mode button {
+			flex: 1 0 auto;
+			white-space: nowrap;
+			font-size: 11px;
+			padding: 8px 5px;
+		}
+
+		.fame-pair {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 6px;
+			margin: 0 0 8px;
+		}
+
+		.fame-pair select {
+			min-width: 0;
+			padding: 6px 8px;
+			border-width: 2px;
+			font-size: 12px;
+		}
+
 		.hcard {
 			padding: 12px
 		}
@@ -1040,6 +1144,10 @@
 			border: 2px solid var(--ink);
 			border-radius: 6px;
 			box-shadow: 2px 3px 0 rgba(30, 58, 138, .25)
+		}
+
+		body.nb .fame-record {
+			background: var(--gold);
 		}
 
 		body.nb h2.title {
@@ -1366,17 +1474,6 @@
 		</div>
 	</div>
 
-	<!-- MOYENNES PAR CATEGORIE -->
-	<div id="category-modal" class="modal" onclick="if(event.target===this)closeM('category-modal')">
-		<div class="box wide">
-			<div class="mh">
-				<h3 class="t" style="margin:0">📊 Efficacité par catégorie</h3><button class="x"
-					onclick="closeM('category-modal')">✕</button>
-			</div>
-			<div id="category-body"></div>
-		</div>
-	</div>
-
 	<!-- CONFIRMATION -->
 	<div id="confirm-modal" class="modal" onclick="if(event.target===this)confirmNo()">
 		<div class="box" style="text-align:center">
@@ -1409,8 +1506,30 @@
 	<canvas id="fx" class="hidden"></canvas>
 
 	<script>
+		window.YAMS_TEST_HISTORY=(() =>
+		{
+			const baseCells={"1": 3,"2": 6,"3": 9,"4": 12,"5": 15,"6": 18,brelan: 21,carre: 24,full: 25,gs: 40,ps: 30,plus: 25,minus: 5,yams: 50};
+			const cells=changes => ({...baseCells,...changes});
+			const players=entries => entries.map(([name,total,board,throws]) => ({name,total,cells: board||null,...(throws? {throws}: {})}));
+			const match=(id,date,time,winner,entries,comment) => ({id,date,time,winner,...(comment? {comment}: {}),players: players(entries)});
+			return [
+				match(1765715400001,'2025-12-14','19:30','Ren',[['Ren',318,cells({}),{yams: 'first',full: 'last'}],['Elo',268,cells({yams: 0})]],'Partie de référence avec feuilles détaillées'),
+				match(1767555000002,'2026-01-04','20:15','Elo',[['Elo',328,cells({minus: 15})],['Licù',268,cells({yams: 0})]]),
+				match(1768764600003,'2026-01-18','18:45','Licù',[['Ren',278],['Licù',318],['Joueur 1',293]],'Partie saisie après coup, sans détail des cases'),
+				match(1770579900004,'2026-02-08','21:05','Joueur 1',[['Joueur 1',313],['Elo',288]]),
+				match(1773595800005,'2026-03-15','19:10','Ren',[['Ren',328,cells({minus: 15})],['Elo',318,cells({})],['Licù',313,cells({plus: 20})]],'Record partagé sur une feuille complète'),
+				match(1775411700006,'2026-04-05','20:35','Elo',[['Elo',293],['Licù',278]]),
+				match(1778522700007,'2026-05-11','17:50','Joueur 1',[['Ren',288],['Joueur 1',318]]),
+				match(1782062100008,'2026-06-21','20:00','Elo',[['Ren',308],['Elo',318],['Licù',294],['Joueur 1',303]]),
+				match(1785690300009,'2026-08-02','19:25','Licù',[['Licù',318],['Joueur 1',268],['Elo',313]]),
+				match(1789933500010,'2026-09-20','18:20','Ren',[['Ren',318],['Elo',268]])
+			];
+		})();
+	</script>
+	<script>
 		const $=id => document.getElementById(id);
 		const log=(...a) => console.log('[Yams]',...a);
+		const TEST_MODE=new URLSearchParams(location.search).get('test')==='1';
 		const K={STATE: 'yams_state',HIST: 'yams_history',SET: 'yams_settings',PLAYERS: 'yams_players',HIDDEN: 'yams_players_hidden',COLORS: 'yams_colors',DEL: 'yams_deleted',TS: 'yams_ts',SYNC: 'yams_sync'};
 		const SYNCED=[K.HIST,K.SET,K.PLAYERS,K.HIDDEN,K.COLORS,K.DEL];
 		let applying=false;
@@ -1423,8 +1542,8 @@
 		const HINT={gs: 'grande suite',ps: 'petite suite',plus: 'max',minus: 'min'};
 		const DEF={playerCount: 2,names: [],pts: {full: 25,gs: 40,ps: 30,yams: 50},thr: 63,bonus: 35};
 
-		const jget=(k,d) => {try {const v=JSON.parse(localStorage.getItem(k)); return v==null? d:v} catch(e) {return d} };
-		const jset=(k,v) => {try {localStorage.setItem(k,JSON.stringify(v)); if(!applying&&SYNCED.includes(k)) {localStorage.setItem(K.TS,Date.now()); scheduleSync()} } catch(e) {} };
+		const jget=(k,d) => {if(TEST_MODE) return k===K.HIST? window.YAMS_TEST_HISTORY||d:d; try {const v=JSON.parse(localStorage.getItem(k)); return v==null? d:v} catch(e) {return d} };
+		const jset=(k,v) => {if(TEST_MODE) return; try {localStorage.setItem(k,JSON.stringify(v)); if(!applying&&SYNCED.includes(k)) {localStorage.setItem(K.TS,Date.now()); scheduleSync()} } catch(e) {} };
 		const esc=s => String(s).replace(/[&<>"']/g,c => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[c]));
 		const hist=() => jget(K.HIST,[]);
 		const today=() => {const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
@@ -1603,7 +1722,7 @@
 			window.scrollTo(0,0);
 			$('home').classList.toggle('hidden',s!=='home'); $('game').classList.toggle('hidden',s!=='game');
 			$('nav-finish').disabled=s!=='game';
-			$('h-sub').innerText=s==='game'? `${game.players.length} joueur(s)`:'Prêt à jouer';
+			$('h-sub').innerText=TEST_MODE? `Mode test · ${hist().length} parties`:s==='game'? `${game.players.length} joueur(s)`:'Prêt à jouer';
 		}
 		function renderHome()
 		{
@@ -1647,7 +1766,7 @@
 			}
 		}
 		function quitSave() {log('Partie sauvegardée pour plus tard'); jset(K.STATE,game); game=null; closeM('menu-modal'); renderHome(); toast('Partie sauvegardée')}
-		function quitDiscard() {log('Partie abandonnée'); localStorage.removeItem(K.STATE); game=null; closeM('menu-modal'); renderHome(); toast('Partie annulée')}
+		function quitDiscard() {log('Partie abandonnée'); if(!TEST_MODE) localStorage.removeItem(K.STATE); game=null; closeM('menu-modal'); renderHome(); toast('Partie annulée')}
 
 		/* ---------- partie ---------- */
 		function validNames()
@@ -1818,7 +1937,7 @@
 			const h=hist(); h.unshift(m); jset(K.HIST,h);
 			lastNames=m.players.map(p => p.name);
 			log('Partie enregistrée',m.id,'gagnant:',winner,m.players.map(p => p.name+':'+p.total));
-			if(fin.live) {localStorage.removeItem(K.STATE); game=null}
+			if(fin.live) {if(!TEST_MODE) localStorage.removeItem(K.STATE); game=null}
 			closeM('finish-modal'); renderHome();
 			const sc=m.players.find(p => p.name===winner).total;
 			celebrate(m,sc!=null&&prevMax>0&&sc>prevMax,prevMax);
@@ -1837,6 +1956,7 @@
 			['games','players','fame'].forEach(x => {$('tab-'+x).classList.toggle('on',x===t); $('hist-'+x).classList.toggle('hidden',x!==t)});
 		}
 		let histFilter='all'; const monthOpen={};
+		let selectedHistoryPlayer='',famePairA='',famePairB='',fameMode='global';
 		function setFilter(f) {histFilter=f; renderHistory()}
 		function renderHistory()
 		{
@@ -1885,39 +2005,105 @@
 			l.forEach(x =>
 			{
 				const streaks=playerStreaks(x.n,h);
-				x.longest=streaks.longest; x.elo=Math.round(elo[x.n]||1000);
+				x.longest=streaks.longest; x.current=streaks.current; x.elo=Math.round(elo[x.n]||1000);
 			});
-			const mxOf=f => Math.max(...l.map(f).map(v => v==null? -1:v));
-			const M={g: mxOf(x => x.g),w: mxOf(x => x.w),r: mxOf(x => Math.round(x.w/x.g*100)),b: mxOf(x => x.best),a: mxOf(x => x.k? Math.round(x.sum/x.k):null),y: mxOf(x => x.y),streak: mxOf(x => x.longest),elo: mxOf(x => x.elo),bonus: mxOf(x => x.bonusEligible? Math.round(x.bonusGames/x.bonusEligible*100):null),up: mxOf(x => x.bestUp),low: mxOf(x => x.bestLow)};
-			const maxUp=105+(105>=settings.thr? settings.bonus:0),maxLow=30+30+settings.pts.full+settings.pts.gs+settings.pts.ps+30+29+settings.pts.yams;
-			const cell=(a,b,best,rec,detail='') => `<div style="border:2px solid ${rec? '#b45309':best? '#16a34a':'#000'};background:${rec? '#fde047':best? '#dcfce7':'#fff'};border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;font-weight:800;text-transform:uppercase">${a}</div><div style="font-size:${rec? 24:18}px;font-weight:900">${b}${rec? ' 👑':best? ' ▲':''}</div>${detail? `<div style="font-size:9px;font-weight:700;opacity:.72">${detail}</div>`:''}</div>`;
+			const eloOrder=[...l].sort((a,b) => b.elo-a.elo);
+			l.forEach(x => x.rank=eloOrder.findIndex(y => y.n===x.n)+1);
+			if(!l.some(x => x.n===selectedHistoryPlayer)) selectedHistoryPlayer=eloOrder[0]?.n||'';
 			const holders=l.filter(x => x.best!=null&&x.best===gmax&&gmax>0);
-			const banner=holders.length? `<div class="card" style="background:var(--gold);text-align:center"><div style="font-size:12px;font-weight:900;letter-spacing:1px">👑 RECORD ABSOLU 👑</div><div style="font-size:48px;font-weight:900;line-height:1.1">${gmax}</div><div>${holders.map(x => `<span class="chip" style="${pstyle(x.n)};font-size:16px">${esc(x.n)}</span>`).join('')}</div><div style="font-size:12px;font-weight:700;margin-top:4px">${holders.map(x => x.bd? fmtDate(x.bd):'date inconnue').join(' · ')}</div></div>`:'';
-			const categoryButton=`<button class="btn alt" style="width:100%;margin-bottom:10px" onclick="openCategoryAverages()">📊 Efficacité par catégorie</button>`;
-			$('hist-players').innerHTML=categoryButton+(l.length? banner+l.map(x =>
+			$('hist-players').innerHTML=l.length? playerTabsHtml(l)+l.filter(x => x.n===selectedHistoryPlayer).map(x =>
 			{
-				const isH=holders.includes(x),rate=Math.round(x.w/x.g*100),avg=x.k? Math.round(x.sum/x.k):null,bonusRate=x.bonusEligible? Math.round(x.bonusGames/x.bonusEligible*100):null;
-				return `<div class="card hcard${isH? ' rec':''}"><div style="display:flex;justify-content:space-between;align-items:center;font-weight:900;font-size:17px;margin-bottom:6px;border-radius:8px;padding:4px 10px;${pstyle(x.n)}"><span>${esc(x.n)}</span>${isH? '<span class="tag" style="background:#fde047;color:#000">👑 DÉTENTEUR DU RECORD</span>':''}</div>
-	    <div class="grid grid3">${cell('Record',x.best!=null? x.best:'–',false,isH)}${cell('Moyenne',avg!=null? avg:'–',avg!=null&&avg===M.a)}${cell('ELO',x.elo,x.elo===M.elo)}${cell('Victoires',x.w,x.w===M.w&&x.w>0)}${cell('Défaites',x.g-x.w,false)}${cell('% victoire',rate+'%',rate===M.r&&rate>0)}${cell('Nb parties',x.g,x.g===M.g)}${cell('YAMS',x.y,x.y===M.y&&x.y>0)}${cell('Plus longue série',x.longest,x.longest===M.streak&&x.longest>0)}${cell('% bonus haut',bonusRate===null? '–':bonusRate+'%',bonusRate!==null&&bonusRate===M.bonus&&bonusRate>0)}${cell('Meilleur total haut',x.bestUp===null? '–':x.bestUp,x.bestUp!==null&&x.bestUp===M.up,false,'Max possible : '+maxUp)}${cell('Meilleur total bas',x.bestLow===null? '–':x.bestLow,x.bestLow!==null&&x.bestLow===M.low,false,'Max possible : '+maxLow)}</div>
+				const rate=Math.round(x.w/x.g*100),avg=x.k? Math.round(x.sum/x.k):null,isH=holders.includes(x);
+				return `<div class="card hcard"><div class="player-identity"><span>#${x.rank} ${esc(x.n)}</span><strong>${x.elo} ELO</strong></div>
+				<div class="player-form"><div style="font-size:11px;font-weight:900;text-transform:uppercase">Forme actuelle</div><strong>${x.current>0? '🔥 '+x.current+' victoire'+(x.current>1? 's':'')+' d’affilée':x.current<0? '🧊 '+Math.abs(x.current)+' défaite'+(x.current<-1? 's':'')+' d’affilée':'Série neutre'}</strong></div>
+				<div class="player-record"><span>Record max personnel${isH? ' · record absolu':''}</span><strong>${x.best===null? '–':x.best+' pts'}</strong></div>
+				<div class="player-quick-stats"><span>Moyenne : ${avg===null? '–':avg}</span><span>Victoires : ${rate}% (${x.w}/${x.g})</span></div>
 	${x.bd? `<div style="font-size:11px;margin-top:6px">Meilleur score le ${fmtDate(x.bd)}</div>`:''}${streakHtml(x.n,h)}</div>`
-			}).join(''):'<p style="text-align:center;font-size:13px">Aucune donnée.</p>');
-			const avgOf=x => x.k? Math.round(x.sum/x.k):null,rateOf=x => Math.round(x.w/x.g*100),bonusOf=x => x.bonusEligible? Math.round(x.bonusGames/x.bonusEligible*100):null;
-			const fame=[
-				['Record',x => x.best??'–',() => false,x => holders.includes(x),'max '+maxTotal()],
-				['Moyenne',x => avgOf(x)??'–',x => avgOf(x)!=null&&avgOf(x)===M.a],
-				['ELO',x => x.elo,x => x.elo===M.elo],
-				['Victoires',x => x.w,x => x.w===M.w&&x.w>0],
+			}).join(''):'<p style="text-align:center;font-size:13px">Aucune donnée.</p>';
+			$('hist-fame').innerHTML=l.length? fameExtrasHtml(l,h,holders,gmax):'<p style="text-align:center;font-size:13px">Aucune donnée.</p>';
+		}
+		function playerTabsHtml(players)
+		{
+			return `<div class="tabs player-tabs">${players.map(x => `<button class="${x.n===selectedHistoryPlayer? 'on':''}" onclick="selectHistoryPlayer('${encodeURIComponent(x.n)}')">${esc(x.n)}</button>`).join('')}</div>`;
+		}
+		function selectHistoryPlayer(encoded) {selectedHistoryPlayer=decodeURIComponent(encoded); renderHistory()}
+		function setFamePair(side,value)
+		{
+			if(side==='a') {famePairA=value; if(famePairA===famePairB) famePairB=''}
+			else {famePairB=value; if(famePairA===famePairB) famePairA=''}
+			renderHistory();
+		}
+		function setFameMode(mode) {fameMode=mode; renderHistory()}
+		function fameExtrasHtml(players,matches,holders,record)
+		{
+			const names=players.map(x => x.n);
+			if(!names.includes(famePairA)) famePairA=names[0]||'';
+			if(!names.includes(famePairB)||famePairB===famePairA) famePairB=names.find(n => n!==famePairA)||'';
+			const absolute=`<div class="card fame-record"><div style="font-size:12px;font-weight:900">👑 RECORD ABSOLU 👑</div><div class="fame-record-score">${record>0? record:'–'}</div><div>${holders.length? holders.map(x => `<span class="chip" style="${pstyle(x.n)};font-size:16px">${esc(x.n)}</span>`).join(''):'Aucun détenteur enregistré'}</div>${holders.some(x => x.bd)? `<div style="font-size:11px;font-weight:700;margin-top:4px">${holders.filter(x => x.bd).map(x => fmtDate(x.bd)).join(' · ')}</div>`:''}</div>`;
+			const toggle=`<div class="tabs fame-mode"><button class="${fameMode==='global'? 'on':''}" onclick="setFameMode('global')">Global</button><button class="${fameMode==='versus'? 'on':''}" onclick="setFameMode('versus')">Versus</button><button class="${fameMode==='category'? 'on':''}" onclick="setFameMode('category')">Efficacité par catégorie</button></div>`;
+			const pairSelect=(side,value) => side==='b'&&!famePairB? '<select aria-label="Joueur 2" disabled><option>Second joueur</option></select>':`<select aria-label="${side==='a'? 'Joueur 1':'Joueur 2'}" style="${pstyle(value)};min-width:0;font-weight:800" onchange="this.style.cssText=pstyle(this.value)+';min-width:0;font-weight:800';setFamePair('${side}',this.value)">${names.map(n => `<option value="${esc(n)}" style="background:#fff;color:#000"${n===value? ' selected':''}>${esc(n)}</option>`).join('')}</select>`;
+			const versusControls=fameMode==='versus'? `<div class="fame-pair">${pairSelect('a',famePairA)}${pairSelect('b',famePairB)}</div>`:'';
+			const pairMatches=matches.filter(m => famePairA!==famePairB&&m.players.some(p => p.name===famePairA)&&m.players.some(p => p.name===famePairB)).sort((a,b) => sk(a).localeCompare(sk(b))||a.id-b.id);
+			const versusPlayers=fameMode==='versus'&&famePairB? versusStats(pairMatches,[famePairA,famePairB]):[];
+			const tablePlayers=fameMode==='versus'? versusPlayers:players;
+			const tableRecord=fameMode==='versus'? Math.max(0,...versusPlayers.map(x => x.best??0)):record;
+			const table=fameMode==='category'? categoryAveragesHtml():fameMode==='versus'&&!famePairB? '<p style="font-size:12px;text-align:center">Choisissez deux joueurs pour comparer leurs statistiques.</p>':fameTableHtml(tablePlayers,tableRecord);
+			return `${absolute}${toggle}${versusControls}${table}`;
+		}
+		function fameTableHtml(players,record)
+		{
+			if(!players.length) return '<p style="text-align:center;font-size:13px">Aucune donnée à comparer.</p>';
+			const avg=x => x.k? Math.round(x.sum/x.k):null,rate=x => x.g? Math.round(x.w/x.g*100):null,bonus=x => x.bonusEligible? Math.round(x.bonusGames/x.bonusEligible*100):null;
+			const maxOf=fn => Math.max(-1,...players.map(x => fn(x)??-1));
+			const max={g: maxOf(x => x.g),w: maxOf(x => x.w),r: maxOf(rate),a: maxOf(avg),y: maxOf(x => x.y),streak: maxOf(x => x.longest),elo: maxOf(x => x.elo),bonus: maxOf(bonus),up: maxOf(x => x.bestUp),low: maxOf(x => x.bestLow)};
+			const maxUp=105+(105>=settings.thr? settings.bonus:0),maxLow=30+30+settings.pts.full+settings.pts.gs+settings.pts.ps+30+29+settings.pts.yams;
+			const rows=[
+				['Record',x => x.best??'–',() => false,x => x.best!=null&&x.best===record&&record>0,'max '+maxTotal()],
+				['Moyenne',x => avg(x)??'–',x => avg(x)!=null&&avg(x)===max.a],
+				['ELO',x => x.elo,x => x.elo===max.elo],
+				['Victoires',x => x.w,x => x.w===max.w&&x.w>0],
 				['Défaites',x => x.g-x.w,() => false],
-				['% victoire',x => rateOf(x)+'%',x => rateOf(x)===M.r&&rateOf(x)>0],
-				['Nb parties',x => x.g,x => x.g===M.g],
-				['YAMS',x => x.y,x => x.y===M.y&&x.y>0],
-				['Série max',x => x.longest,x => x.longest===M.streak&&x.longest>0],
-				['% bonus haut',x => bonusOf(x)===null? '–':bonusOf(x)+'%',x => bonusOf(x)!==null&&bonusOf(x)===M.bonus&&bonusOf(x)>0],
-				['Meilleur haut',x => x.bestUp??'–',x => x.bestUp!==null&&x.bestUp===M.up,() => false,'max '+maxUp],
-				['Meilleur bas',x => x.bestLow??'–',x => x.bestLow!==null&&x.bestLow===M.low,() => false,'max '+maxLow]
+				['% victoire',x => rate(x)===null? '–':rate(x)+'%',x => rate(x)===max.r&&rate(x)>0],
+				['Nb parties',x => x.g,x => x.g===max.g],
+				['YAMS',x => x.y,x => x.y===max.y&&x.y>0],
+				['Série max',x => x.longest,x => x.longest===max.streak&&x.longest>0],
+				['% bonus haut',x => bonus(x)===null? '–':bonus(x)+'%',x => bonus(x)!==null&&bonus(x)===max.bonus&&bonus(x)>0],
+				['Meilleur haut',x => x.bestUp??'–',x => x.bestUp!==null&&x.bestUp===max.up,() => false,'max '+maxUp],
+				['Meilleur bas',x => x.bestLow??'–',x => x.bestLow!==null&&x.bestLow===max.low,() => false,'max '+maxLow]
 			];
-			const fameCell=(v,best,rec) => `<td style="${rec? 'background:#fde047;box-shadow:inset 0 0 0 2px #b45309':best? 'background:#dcfce7;box-shadow:inset 0 0 0 2px #16a34a':''}">${v}${rec? '<sup>👑</sup>':best? '<sup>▲</sup>':''}</td>`;
-			$('hist-fame').innerHTML=l.length? `<div style="overflow-x:auto"><table class="sheet"${l.length>4? ` style="min-width:${76+l.length*64}px"`:''}><thead><tr><th class="rl"></th>${l.map(x => `<th style="${pstyle(x.n)}"><div class="pn">${esc(x.n)}</div></th>`).join('')}</tr></thead><tbody>${fame.map(([label,val,best,rec=() => false,detail]) => `<tr><th class="rl">${label}${detail? `<small>${detail}</small>`:''}</th>${l.map(x => fameCell(val(x),best(x),rec(x))).join('')}</tr>`).join('')}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#dcfce7;border:2px solid #16a34a;border-radius:6px;padding:0 6px">▲ vert</span> meilleur indicateur · <span style="background:#fde047;border:2px solid #b45309;border-radius:6px;padding:0 6px">👑 jaune</span> record absolu</p>`:'<p style="text-align:center;font-size:13px">Aucune donnée.</p>';
+			const recordHolders=players.filter(x => x.best!=null&&x.best===record&&record>0);
+			const fameCell=(value,best,isRecord) => `<td style="${isRecord? 'background:#fde047;box-shadow:inset 0 0 0 2px #b45309':best? 'background:#dcfce7;box-shadow:inset 0 0 0 2px #16a34a':''}">${value}${isRecord? '<sup>👑</sup>':best? '<sup>▲</sup>':''}</td>`;
+			return `<div style="overflow-x:auto"><table class="sheet"${players.length>4? ` style="min-width:${76+players.length*64}px"`:''}><thead><tr><th class="rl"></th>${players.map(x => `<th style="${pstyle(x.n)}"><div class="pn">${esc(x.n)}</div></th>`).join('')}</tr></thead><tbody>${rows.map(([label,value,best,rec=() => false,detail]) => `<tr><th class="rl">${label}${detail? `<small>${detail}</small>`:''}</th>${players.map(x => fameCell(value(x),best(x),rec(x))).join('')}</tr>`).join('')}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#dcfce7;border:2px solid #16a34a;border-radius:6px;padding:0 6px">▲ vert</span> meilleur indicateur · <span style="background:#fde047;border:2px solid #b45309;border-radius:6px;padding:0 6px">👑 jaune</span> record${recordHolders.length? ' pour ce périmètre':''}</p>`;
+		}
+		function versusStats(matches,names)
+		{
+			const ordered=[...matches].sort((a,b) => sk(a).localeCompare(sk(b))||a.id-b.id);
+			const stats=names.map(n => ({n,g: 0,w: 0,sum: 0,k: 0,best: null,bd: null,y: 0,bonusGames: 0,bonusEligible: 0,bestUp: null,bestLow: null,longest: 0,elo: 1000}));
+			const streaks=[0,0],restricted=ordered.map(m =>
+			{
+				const selected=names.map(n => m.players.find(p => p.name===n));
+				const scores=selected.map(p => typeof p.total==='number'? p.total:p.cells? calc(p.cells,m.rules||settings).total:null);
+				let winner=m.winner;
+				if(scores[0]!==null&&scores[1]!==null&&scores[0]!==scores[1]) winner=scores[0]>scores[1]? names[0]:names[1];
+				selected.forEach((p,i) =>
+			{
+					const x=stats[i],score=scores[i];
+					x.g++; if(winner===names[i]) {x.w++; streaks[i]++} else streaks[i]=0;
+					x.longest=Math.max(x.longest,streaks[i]);
+					if(score!==null) {x.sum+=score; x.k++; if(x.best===null||score>x.best) {x.best=score; x.bd=m.date}}
+					if(p.cells)
+					{
+						if(p.cells.yams>0) x.y++;
+						const total=calc(p.cells,m.rules||settings); x.bonusEligible++; if(total.bonus>0) x.bonusGames++;
+						x.bestUp=x.bestUp===null? total.haut:Math.max(x.bestUp,total.haut);
+						x.bestLow=x.bestLow===null? total.bas:Math.max(x.bestLow,total.bas);
+					}
+				});
+				return {...m,winner,players:selected.map((p,i) => ({...p,total: scores[i]}))};
+			});
+			const ratings=eloRatings(restricted);
+			stats.forEach(x => x.elo=Math.round(ratings[x.n]||1000));
+			return stats;
 		}
 		function playerStreaks(name,h)
 		{
@@ -1925,7 +2111,7 @@
 			[...h].sort((a,b) => sk(a).localeCompare(sk(b))||a.id-b.id).forEach(m =>
 			{
 				const p=m.players.find(x => x.name===name); if(!p) return;
-				if(m.winner===name) {current++; longest=Math.max(longest,current)} else current=0;
+				if(m.winner===name) {current=current>0? current+1:1; longest=Math.max(longest,current)} else current=current<0? current-1:-1;
 			});
 			return {longest,current};
 		}
@@ -1950,7 +2136,7 @@
 			});
 			return ratings;
 		}
-		function openCategoryAverages()
+		function categoryAveragesHtml()
 		{
 			const matches=hist(),players=known().filter(name => matches.some(m => m.players.some(p => p.name===name)));
 			const caseMaximum=(key,m) =>
@@ -1976,8 +2162,7 @@
 				const best=Math.max(-1,...vals.map(v => v===null? -1:v));
 				return `<tr><th class="rl">${rowLabel(key)}</th>${vals.map(value => `<td class="${value!==null&&value===best?'best':''}"><span class="v">${value===null?'–':value+'%'}</span></td>`).join('')}</tr>`;
 			}).join('');
-			$('category-body').innerHTML=players.length? `<p style="font-size:12px;font-weight:700;margin:0 0 10px">Points marqués ÷ points maximum. Exemple : 6/10 sur la case des 2 = 60 %.</p><div style="overflow-x:auto"><table class="sheet"><thead><tr><th class="rl"></th>${players.map(name => `<th style="${pstyle(name)}"><div class="pn">${esc(name)}</div></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#bbf7d0;padding:1px 8px">vert</span> meilleure efficacité par catégorie. Les cases non jouées ne sont pas comptabilisées.</p>`:'<p style="text-align:center">Aucune catégorie détaillée enregistrée.</p>';
-			openM('category-modal');
+			return players.length? `<p style="font-size:12px;font-weight:700;margin:0 0 10px">Points marqués ÷ points maximum. Exemple : 6/10 sur la case des 2 = 60 %.</p><div style="overflow-x:auto"><table class="sheet"><thead><tr><th class="rl"></th>${players.map(name => `<th style="${pstyle(name)}"><div class="pn">${esc(name)}</div></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#bbf7d0;padding:1px 8px">vert</span> meilleure efficacité par catégorie. Les cases non jouées ne sont pas comptabilisées.</p>`:'<p style="text-align:center">Aucune catégorie détaillée enregistrée.</p>';
 		}
 		// Série signée : +n = n victoires d'affilée, −n = n défaites d'affilée
 		const streakOpp={};
@@ -2079,10 +2264,10 @@
 		function syncThemeBtns() {const nb=document.body.classList.contains('nb'); $('th-nb').classList.toggle('alt',!nb); $('th-checker').classList.toggle('alt',nb)}
 		function setTheme(t)
 		{
-			document.body.classList.toggle('nb',t==='nb'); localStorage.setItem('yams_theme',t); log('Thème',t);
+			document.body.classList.toggle('nb',t==='nb'); if(!TEST_MODE) localStorage.setItem('yams_theme',t); log('Thème',t);
 			document.querySelector('meta[name=theme-color]').content=t==='nb'? '#1e3a8a':'#000000'; syncThemeBtns();
 		}
-		setTheme(localStorage.getItem('yams_theme')||'nb');
+		setTheme(TEST_MODE? 'nb':localStorage.getItem('yams_theme')||'nb');
 
 		/* ---------- réglages ---------- */
 		function openSettings()
@@ -2132,6 +2317,7 @@
 		}
 		function importBackup(ev)
 		{
+			if(TEST_MODE) return toast('Import désactivé en mode test');
 			const f=ev.target.files[0]; if(!f) return;
 			const rd=new FileReader();
 			rd.onload=() =>
@@ -2208,6 +2394,7 @@
 		function setSync(ok,msg) {$('sync-status').innerText=msg; $('sync-btn').innerText=ok? '☁ Synchroniser maintenant':'☁ Se connecter à Google Drive'}
 		function gsiReady()
 		{
+			if(TEST_MODE) return;
 			tc=google.accounts.oauth2.initTokenClient({
 				client_id: CID,scope: SCOPE,
 				callback: r => {if(r.error) {setSync(false,'Connexion refusée'); return } tok=r.access_token; tokExp=Date.now()+(r.expires_in-60)*1000; needAuth=false; localStorage.setItem(K.SYNC,'1'); syncNow()},
@@ -2216,7 +2403,7 @@
 			if(localStorage.getItem(K.SYNC)==='1') askToken();
 		}
 		function askToken() {if(!tc) return; lastTry=Date.now(); tc.requestAccessToken({prompt: ''})}
-		function syncClick() {tok&&Date.now()<tokExp? syncNow():askToken()}
+		function syncClick() {if(TEST_MODE) return toast('Synchronisation désactivée en mode test'); tok&&Date.now()<tokExp? syncNow():askToken()}
 		function scheduleSync() {if(!tok) return; clearTimeout(syncT); syncT=setTimeout(syncNow,2000)}
 		const api=(url,o={}) => fetch(url,{...o,headers: {...(o.headers||{}),Authorization: 'Bearer '+tok}}).then(r => {if(r.status===401) {tok=null; needAuth=true; throw new Error('auth')} if(!r.ok) throw new Error('http '+r.status); return r});
 		const snap=() => ({matches: hist(),deleted: jget(K.DEL,[]),players: jget(K.PLAYERS,[]),hidden: jget(K.HIDDEN,[]),colors: jget(K.COLORS,{}),settings: {pts: settings.pts,thr: settings.thr,bonus: settings.bonus},ts: +localStorage.getItem(K.TS)||0});
@@ -2242,6 +2429,7 @@
 		}
 		async function shareClick()
 		{
+			if(TEST_MODE) return toast('Partage désactivé en mode test');
 			if(!tok||Date.now()>tokExp) return toast('Connectez-vous d\'abord');
 			if(!sharedId) {await syncNow(); if(!sharedId) return toast('Synchronisation impossible')}
 			askText('Email Google du partenaire',async v =>
