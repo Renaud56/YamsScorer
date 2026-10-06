@@ -1,0 +1,20 @@
+{
+	"id": "./",
+	"name": "Yams Master",
+	"short_name": "Yams",
+	"description": "Compteur et historique de parties de Yams",
+	"start_url": "./",
+	"scope": "./",
+	"display": "standalone",
+	"orientation": "portrait-primary",
+	"background_color": "#fff3b0",
+	"theme_color": "#000000",
+	"icons": [
+		{
+			"src": "./icons/yams.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "any maskable"
+		}
+	]
+}
