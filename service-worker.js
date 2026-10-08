@@ -1,4 +1,4 @@
-const CACHE_NAME='yams-scorer-shell-v1';
+const CACHE_NAME='yams-scorer-shell-v2';
 const APP_URL=new URL('./',self.registration.scope).href;
 const APP_SHELL=[
 	APP_URL,
