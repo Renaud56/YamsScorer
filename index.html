@@ -2131,10 +2131,10 @@
 			const s={};
 			h.forEach(m => m.players.forEach(p =>
 			{
-				const x=s[p.name]||(s[p.name]={n: p.name,g: 0,w: 0,sum: 0,k: 0,best: null,bd: null,y: 0,bonusGames: 0,bonusEligible: 0,bestUp: null,bestLow: null});
+				const x=s[p.name]||(s[p.name]={n: p.name,g: 0,w: 0,sum: 0,k: 0,best: null,bd: null,y: 0,bonusGames: 0,bonusEligible: 0,bestUp: null,bestLow: null,worst: null,worstUp: null,worstLow: null});
 				x.g++; if(m.winner===p.name) x.w++;
 				const score=matchScore(p,m);
-				if(score!==null) {x.sum+=score; x.k++; if(x.best===null||score>x.best) {x.best=score; x.bd=m.date} }
+				if(score!==null) {x.sum+=score; x.k++; if(x.best===null||score>x.best) {x.best=score; x.bd=m.date}; x.worst=x.worst===null? score:Math.min(x.worst,score) }
 				if(p.cells&&p.cells.yams>0) x.y++;
 				if(p.cells)
 				{
@@ -2142,6 +2142,8 @@
 					x.bonusEligible++; if(totals.bonus>0) x.bonusGames++;
 					x.bestUp=x.bestUp===null? totals.haut:Math.max(x.bestUp,totals.haut);
 					x.bestLow=x.bestLow===null? totals.bas:Math.max(x.bestLow,totals.bas);
+					x.worstUp=x.worstUp===null? totals.haut:Math.min(x.worstUp,totals.haut);
+					x.worstLow=x.worstLow===null? totals.bas:Math.min(x.worstLow,totals.bas);
 				}
 			}));
 			const l=Object.values(s).sort((a,b) => (b.best??-1)-(a.best??-1)||b.w-a.w);
@@ -2209,6 +2211,7 @@
 			const avg=x => x.k? Math.round(x.sum/x.k):null,rate=x => x.g? Math.round(x.w/x.g*100):null,bonus=x => x.bonusEligible? Math.round(x.bonusGames/x.bonusEligible*100):null;
 			const maxOf=fn => Math.max(-1,...players.map(x => fn(x)??-1));
 			const max={g: maxOf(x => x.g),w: maxOf(x => x.w),r: maxOf(rate),a: maxOf(avg),y: maxOf(x => x.y),streak: maxOf(x => x.longest),elo: maxOf(x => x.elo),bonus: maxOf(bonus),up: maxOf(x => x.bestUp),low: maxOf(x => x.bestLow)};
+			const minOf=fn => Math.min(Infinity,...players.map(x => fn(x)??Infinity)),min={w: minOf(x => x.worst),up: minOf(x => x.worstUp),low: minOf(x => x.worstLow)};
 			const maxUp=105+(105>=settings.thr? settings.bonus:0),maxLow=30+30+settings.pts.full+settings.pts.gs+settings.pts.ps+30+29+settings.pts.yams;
 			const rows=[
 				['Record',x => x.best??'–',() => false,x => x.best!=null&&x.best===record&&record>0,'max '+maxTotal()],
@@ -2222,16 +2225,19 @@
 				['Série max',x => x.longest,x => x.longest===max.streak&&x.longest>0],
 				['% bonus haut',x => bonus(x)===null? '–':bonus(x)+'%',x => bonus(x)!==null&&bonus(x)===max.bonus&&bonus(x)>0],
 				['Meilleur haut',x => x.bestUp??'–',x => x.bestUp!==null&&x.bestUp===max.up,() => false,'max '+maxUp],
-				['Meilleur bas',x => x.bestLow??'–',x => x.bestLow!==null&&x.bestLow===max.low,() => false,'max '+maxLow]
+				['Meilleur bas',x => x.bestLow??'–',x => x.bestLow!==null&&x.bestLow===max.low,() => false,'max '+maxLow],
+				['Pire total',x => x.worst??'–',() => false,() => false,undefined,x => x.worst!==null&&x.worst===min.w],
+				['Pire haut',x => x.worstUp??'–',() => false,() => false,undefined,x => x.worstUp!==null&&x.worstUp===min.up],
+				['Pire bas',x => x.worstLow??'–',() => false,() => false,undefined,x => x.worstLow!==null&&x.worstLow===min.low]
 			];
 			const recordHolders=players.filter(x => x.best!=null&&x.best===record&&record>0);
-			const fameCell=(value,best,isRecord) => `<td style="${isRecord? 'background:#fde047;box-shadow:inset 0 0 0 2px #b45309':best? 'background:#dcfce7;box-shadow:inset 0 0 0 2px #16a34a':''}">${value}${isRecord? '<sup>👑</sup>':best? '<sup>▲</sup>':''}</td>`;
-			return `<div style="overflow-x:auto"><table class="sheet"${players.length>4? ` style="min-width:${76+players.length*64}px"`:''}><thead><tr><th class="rl"></th>${players.map(x => `<th style="${pstyle(x.n)}"><div class="pn">${esc(x.n)}</div></th>`).join('')}</tr></thead><tbody>${rows.map(([label,value,best,rec=() => false,detail]) => `<tr><th class="rl">${label}${detail? `<small>${detail}</small>`:''}</th>${players.map(x => fameCell(value(x),best(x),rec(x))).join('')}</tr>`).join('')}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#dcfce7;border:2px solid #16a34a;border-radius:6px;padding:0 6px">▲ vert</span> meilleur indicateur · <span style="background:#fde047;border:2px solid #b45309;border-radius:6px;padding:0 6px">👑 jaune</span> record${recordHolders.length? ' pour ce périmètre':''}</p>`;
+			const fameCell=(value,best,isRecord,isWorst) => `<td style="${isRecord? 'background:#fde047;box-shadow:inset 0 0 0 2px #b45309':best? 'background:#dcfce7;box-shadow:inset 0 0 0 2px #16a34a':isWorst? 'background:#fecaca;box-shadow:inset 0 0 0 2px #dc2626':''}">${value}${isRecord? '<sup>👑</sup>':best? '<sup>▲</sup>':isWorst? '<sup>▼</sup>':''}</td>`;
+			return `<div style="overflow-x:auto"><table class="sheet"${players.length>4? ` style="min-width:${76+players.length*64}px"`:''}><thead><tr><th class="rl"></th>${players.map(x => `<th style="${pstyle(x.n)}"><div class="pn">${esc(x.n)}</div></th>`).join('')}</tr></thead><tbody>${rows.map(([label,value,best,rec=() => false,detail,worst=() => false]) => `<tr><th class="rl">${label}${detail? `<small>${detail}</small>`:''}</th>${players.map(x => fameCell(value(x),best(x),rec(x),worst(x))).join('')}</tr>`).join('')}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#dcfce7;border:2px solid #16a34a;border-radius:6px;padding:0 6px">▲ vert</span> meilleur indicateur · <span style="background:#fde047;border:2px solid #b45309;border-radius:6px;padding:0 6px">👑 jaune</span> record${recordHolders.length? ' pour ce périmètre':''}</p>`;
 		}
 		function versusStats(matches,names,globalPlayers)
 		{
 			const ordered=[...matches].sort((a,b) => sk(a).localeCompare(sk(b))||a.id-b.id);
-			const stats=names.map(n => ({n,g: 0,w: 0,sum: 0,k: 0,best: null,bd: null,y: 0,bonusGames: 0,bonusEligible: 0,bestUp: null,bestLow: null,longest: 0,elo: 1000}));
+			const stats=names.map(n => ({n,g: 0,w: 0,sum: 0,k: 0,best: null,bd: null,y: 0,bonusGames: 0,bonusEligible: 0,bestUp: null,bestLow: null,worst: null,worstUp: null,worstLow: null,longest: 0,elo: 1000}));
 			const streaks=[0,0];
 			ordered.forEach(m =>
 			{
@@ -2244,13 +2250,15 @@
 					const x=stats[i],score=scores[i];
 					x.g++; if(winner===names[i]) {x.w++; streaks[i]++} else streaks[i]=0;
 					x.longest=Math.max(x.longest,streaks[i]);
-					if(score!==null) {x.sum+=score; x.k++; if(x.best===null||score>x.best) {x.best=score; x.bd=m.date}}
+					if(score!==null) {x.sum+=score; x.k++; if(x.best===null||score>x.best) {x.best=score; x.bd=m.date}; x.worst=x.worst===null? score:Math.min(x.worst,score)}
 					if(p.cells)
 					{
 						if(p.cells.yams>0) x.y++;
 						const total=calc(p.cells,m.rules||settings); x.bonusEligible++; if(total.bonus>0) x.bonusGames++;
 						x.bestUp=x.bestUp===null? total.haut:Math.max(x.bestUp,total.haut);
 						x.bestLow=x.bestLow===null? total.bas:Math.max(x.bestLow,total.bas);
+						x.worstUp=x.worstUp===null? total.haut:Math.min(x.worstUp,total.haut);
+						x.worstLow=x.worstLow===null? total.bas:Math.min(x.worstLow,total.bas);
 					}
 				});
 			});
