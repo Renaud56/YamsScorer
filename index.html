@@ -2066,6 +2066,7 @@
 		{
 			$('hist-filter').classList.toggle('hidden',t!=='games');
 			['games','players','fame'].forEach(x => {$('tab-'+x).classList.toggle('on',x===t); $('hist-'+x).classList.toggle('hidden',x!==t)});
+			if(t==='players') scrollStreaks();
 		}
 		let histFilter='all'; const monthOpen={};
 		let selectedHistoryPlayer='',famePairA='',famePairB='',fameMode='global';
@@ -2304,6 +2305,7 @@
 		const scrollStreaks=() => setTimeout(() => document.querySelectorAll('.stk-scroll:not([data-done])').forEach(initStreakNavigation),50);
 		function initStreakNavigation(viewport)
 		{
+			if(!viewport.clientWidth) return;
 			const svg=viewport.querySelector('svg'),baseWidth=svg.viewBox.baseVal.width;
 			let scale=1,pinch=null,drag=null,suppressClick=false;
 			const touchGeometry=touches => ({distance: Math.abs(touches[1].clientX-touches[0].clientX),center: (touches[0].clientX+touches[1].clientX)/2-viewport.getBoundingClientRect().left});
