@@ -944,6 +944,14 @@
 			padding: 12px
 		}
 
+		#hist-players {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		#hist-players > * {
+			min-width: 0;
+		}
+
 		.hcard .top {
 			display: flex;
 			justify-content: space-between;
@@ -2293,7 +2301,57 @@
 		const streakOpp={};
 		function setOpp(el) {const n=el.dataset.n; streakOpp[n]=el.value; el.closest('.stk').outerHTML=streakHtml(n,hist().sort((a,b) => sk(b).localeCompare(sk(a))||b.id-a.id))}
 		// Positionne les graphiques nouvellement rendus sur les parties les plus récentes
-		const scrollStreaks=() => setTimeout(() => document.querySelectorAll('.stk-scroll:not([data-done])').forEach(e => {e.scrollLeft=e.scrollWidth; e.dataset.done='1'}),50);
+		const scrollStreaks=() => setTimeout(() => document.querySelectorAll('.stk-scroll:not([data-done])').forEach(initStreakNavigation),50);
+		function initStreakNavigation(viewport)
+		{
+			const svg=viewport.querySelector('svg'),baseWidth=svg.viewBox.baseVal.width;
+			let scale=1,pinch=null,drag=null,suppressClick=false;
+			const touchGeometry=touches => ({distance: Math.abs(touches[1].clientX-touches[0].clientX),center: (touches[0].clientX+touches[1].clientX)/2-viewport.getBoundingClientRect().left});
+			viewport.addEventListener('touchstart',event =>
+			{
+				suppressClick=false;
+				if(event.touches.length!==2) return;
+				const geometry=touchGeometry(event.touches);
+				pinch={...geometry,scale,anchor: (viewport.scrollLeft+geometry.center)/scale};
+			},{passive: true});
+			viewport.addEventListener('touchmove',event =>
+			{
+				if(!pinch||event.touches.length!==2) return;
+				event.preventDefault();
+				const geometry=touchGeometry(event.touches);
+				scale=Math.max(Math.min(1,viewport.clientWidth/baseWidth),Math.min(4,pinch.scale*geometry.distance/Math.max(1,pinch.distance)));
+				svg.setAttribute('width',baseWidth*scale);
+				viewport.scrollLeft=pinch.anchor*scale-geometry.center;
+				suppressClick=true;
+			},{passive: false});
+			const endPinch=() => {pinch=null};
+			viewport.addEventListener('touchend',endPinch);
+			viewport.addEventListener('touchcancel',endPinch);
+			viewport.addEventListener('pointerdown',event =>
+			{
+				if(event.pointerType!=='mouse'||event.button!==0) return;
+				drag={start: event.clientX,left: viewport.scrollLeft};
+				suppressClick=false;
+			});
+			viewport.addEventListener('pointermove',event =>
+			{
+				if(!drag) return;
+				if(!suppressClick&&Math.abs(event.clientX-drag.start)<=4) return;
+				suppressClick=true;
+				viewport.setPointerCapture(event.pointerId);
+				viewport.scrollLeft=drag.left+drag.start-event.clientX;
+			});
+			const endDrag=() => {drag=null};
+			viewport.addEventListener('pointerup',endDrag);
+			viewport.addEventListener('pointercancel',endDrag);
+			viewport.addEventListener('click',event =>
+			{
+				if(!suppressClick) return;
+				event.preventDefault(); event.stopPropagation(); suppressClick=false;
+			},true);
+			viewport.scrollLeft=viewport.scrollWidth;
+			viewport.dataset.done='1';
+		}
 		function streakHtml(name,h)
 		{
 			const opp=streakOpp[name]||'';
@@ -2348,7 +2406,7 @@
 			const last=pts[n-1].streak;
 			scrollStreaks();
 			return head+`
-	<div style="display:flex;background:#fff;border:2px solid #000;border-radius:8px;margin-top:4px;overflow:hidden">${axis('l')}<div class="stk-scroll" style="flex:1;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Scores et séries de ${esc(name)} par partie" style="display:block"><title>Scores et séries de ${esc(name)} par partie</title>${grid}${scoreLines}<polyline points="${streakLine}" fill="none" stroke="#111827" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${best>1? `<polyline points="${bestLine}" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`:''}${scoreDots}${streakDots}${xl}</svg></div>${axis('r')}</div>
+	<div style="display:flex;background:#fff;border:2px solid #000;border-radius:8px;margin-top:4px;overflow:hidden">${axis('l')}<div class="stk-scroll" style="flex:1;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:thin;cursor:grab;user-select:none"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Scores et séries de ${esc(name)} par partie" style="display:block"><title>Scores et séries de ${esc(name)} par partie</title>${grid}${scoreLines}<polyline points="${streakLine}" fill="none" stroke="#111827" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${best>1? `<polyline points="${bestLine}" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`:''}${scoreDots}${streakDots}${xl}</svg></div>${axis('r')}</div>
   <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:10px;font-weight:800;margin-top:3px"><span style="color:#2563eb">━ Score · axe gauche</span><span style="color:#166534">━ Série victoires/défaites · axe droit</span></div>
   ${n>1? '<div style="font-size:10px;font-weight:700;opacity:.7">Glissez le graphique pour voir les parties précédentes · touchez un point pour le détail.</div>':''}
 				<div style="font-size:12px;font-weight:700;margin-top:4px">Série actuelle : ${last>0? last+' victoire(s)':Math.abs(last)+' défaite(s)'}</div></div>`;
