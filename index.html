@@ -430,8 +430,8 @@
 			min-width: 36px;
 			padding: 3px 9px;
 			border-radius: 999px;
-			background: #bbf7d0;
-			color: #14532d
+			background: var(--player-bg, #bbf7d0);
+			color: var(--player-fg, #14532d)
 		}
 
 		#hist-fame .sheet thead th {
@@ -474,61 +474,8 @@
 			margin-left: 1px
 		}
 
-		#detail-body .sheet {
-			border: 3px solid #111;
-			border-radius: 16px;
-			overflow: hidden;
-			background: #fff
-		}
-
 		#detail-body .sheet thead th {
-			position: static;
-			height: 78px;
-			border: 0
-		}
-
-		#detail-body .sheet thead .rl {
-			background: #fff
-		}
-
-		#detail-body .sheet th,
-		#detail-body .sheet td {
-			border: 0;
-			border-bottom: 1px solid #eceff1;
-			height: 46px
-		}
-
-		#detail-body .sheet .rl {
-			background: #fff;
-			font-size: 14px;
-			padding: 0 12px
-		}
-
-		#detail-body .sheet td.cell.empty {
-			background: #fafafa
-		}
-
-		#detail-body .sheet td.win {
-			background: #fffbea !important
-		}
-
-		#detail-body .sheet tr.calc th,
-		#detail-body .sheet tr.calc td:not(.win) {
-			background: #f3f4f6;
-			color: #374151;
-			font-size: 14px
-		}
-
-		#detail-body .sheet tr.sub th,
-		#detail-body .sheet tr.sub td:not(.win),
-		#detail-body .sheet tr.grand th,
-		#detail-body .sheet tr.grand td:not(.win) {
-			background: #111827
-		}
-
-		#detail-body .sheet tr.sub td.win,
-		#detail-body .sheet tr.grand td.win {
-			background: var(--gold) !important
+			position: static
 		}
 
 		.sheet tr.grand .star {
@@ -572,7 +519,7 @@
 		}
 
 		.chip.w {
-			box-shadow: 0 0 0 3px var(--gold);
+			box-shadow: 0 0 0 1px currentColor;
 			border-color: #000
 		}
 
@@ -596,18 +543,14 @@
 		}
 
 		.sheet td.win {
-			background: #fff3b0 !important;
-			color: #000 !important
-		}
-
-		.sheet th.win {
-			background: var(--gold) !important;
+			background: color-mix(in srgb, var(--player-bg) 12%, #fff) !important;
 			color: #000 !important
 		}
 
 		.sheet tr.sub td.win,
 		.sheet tr.grand td.win {
-			background: var(--gold) !important
+			background: var(--player-bg) !important;
+			color: var(--player-fg) !important
 		}
 
 		.sheet .star {
@@ -763,6 +706,12 @@
 		#cell-body .kp-disp {
 			font-size: 42px;
 			min-height: 72px
+		}
+
+		#cell-body .btn.nav {
+			font-size: 14px;
+			min-height: 0;
+			padding: 6px 4px
 		}
 
 		#cell-body .btn.red {
@@ -1011,10 +960,6 @@
 			margin: 3px 4px 3px 0;
 			font-size: 15px;
 			font-weight: 700
-		}
-
-		.chip.w {
-			background: var(--gold)
 		}
 
 		.toast {
@@ -1406,6 +1351,7 @@
 
 		<!-- PARTIE -->
 		<div id="game" class="hidden">
+			<button class="btn" style="width:100%;margin-bottom:10px" onclick="startQuickFill()">⚡ Saisie rapide</button>
 			<div id="sheet-wrap"></div>
 			<p
 				style="background:#fff;border:2px solid #000;border-radius:8px;padding:6px;font-size:11px;font-weight:700;margin-top:10px">
@@ -1424,7 +1370,7 @@
 	<div id="cell-modal" class="modal bottom" onclick="if(event.target===this)closeM('cell-modal')">
 		<div class="box">
 			<div class="mh">
-				<h3 class="t" id="cell-title" style="margin:0"></h3><button class="x"
+				<h3 class="t" id="cell-title" style="margin:0;flex:1;text-align:left"></h3><button class="x"
 					onclick="closeM('cell-modal')">✕</button>
 			</div>
 			<div id="cell-body"></div>
@@ -1724,6 +1670,7 @@
 		function renderSheet(players,r,o={})
 		{
 			const c=players.map(p => calc(p.cells,r));
+			const columnStyle=i => {const colors=pcol(players[i].name); return `--player-bg:${colors[0]};--player-fg:${colors[1]}`};
 			const w=i => o.winner===players[i].name? ' win':'';
 			const ti=o.live&&players.length>1? c.findIndex(x => x.filled<Math.max(...c.map(y => y.filled))):-1,turn=ti>=0? ti:(o.live&&players.length>1&&c.some(x => x.filled<NCELLS)? 0:-1);
 			const tc=i => i===turn? ' tc':'';
@@ -1733,15 +1680,15 @@
 				const mx=Math.max(0,...players.map(p => p.cells&&typeof p.cells[k]==='number'? p.cells[k]:0)); return `<tr><th class="rl">${rowLabel(k)}</th>${players.map((p,i) =>
 				{
 					const v=p.cells? p.cells[k]:undefined;
-					return `<td class="cell${v===undefined? ' empty':v===0? ' zero':''}${w(i)}${tc(i)}${warn(p,k)? ' warn':''}${!o.live&&k!=='minus'&&mx>0&&v===mx&&players.length>1? ' best':''}" ${o.live? `data-p="${i}" data-r="${k}"`:''}>${'<span class="v">'+(v===undefined? '':v===0? '✕':v)+'</span>'+(p.throws&&p.throws[k]&&v>0? `<sup style="font-size:10px">${p.throws[k]==='first'? '⭐':'⏱️'}</sup>`:'')}</td>`
+					return `<td style="${columnStyle(i)}" class="cell${v===undefined? ' empty':v===0? ' zero':''}${w(i)}${tc(i)}${warn(p,k)? ' warn':''}${!o.live&&k!=='minus'&&mx>0&&v===mx&&players.length>1? ' best':''}" ${o.live? `data-p="${i}" data-r="${k}"`:''}>${'<span class="v">'+(v===undefined? '':v===0? '✕':v)+'</span>'+(p.throws&&p.throws[k]&&v>0? `<sup style="font-size:10px">${p.throws[k]==='first'? '⭐':'⏱️'}</sup>`:'')}</td>`
 				}).join('')}</tr>`
 			};
 			const sRow=(label,key,cls) =>
 			{
 				const mx=Math.max(...c.map(x => x[key])),hl=!o.live&&players.length>1&&mx>0;
-				return `<tr class="${cls}"><th class="rl">${label}</th>${c.map((x,i) => `<td class="${(w(i)+tc(i)+(hl&&x[key]===mx? ' best':'')).trim()}"><span class="v">${x[key]}</span></td>`).join('')}</tr>`
+				return `<tr class="${cls}"><th class="rl">${label}</th>${c.map((x,i) => `<td style="${columnStyle(i)}" class="${(w(i)+tc(i)+(hl&&x[key]===mx? ' best':'')).trim()}"><span class="v">${x[key]}</span></td>`).join('')}</tr>`
 			};
-			const cRow=(label,fn,cls) => `<tr class="${cls}"><th class="rl">${label}</th>${c.map((x,i) => `<td class="${(w(i)+tc(i)).trim()}">${fn(x,i)}</td>`).join('')}</tr>`;
+			const cRow=(label,fn,cls) => `<tr class="${cls}"><th class="rl">${label}</th>${c.map((x,i) => `<td style="${columnStyle(i)}" class="${(w(i)+tc(i)).trim()}">${fn(x,i)}</td>`).join('')}</tr>`;
 			return `<table class="sheet"${turn>=0? ` style="--pc:${pcol(players[turn].name)[0]}"`:''}><thead><tr><th class="rl"></th>${head}</tr></thead><tbody>
     ${UP.map(inRow).join('')}
     ${cRow(`TOTAL<small>${r.thr} = +${r.bonus}</small>`,x => x.up,'calc')}
@@ -1935,11 +1882,24 @@
 		function renderGame() {$('sheet-wrap').innerHTML=renderSheet(game.players,settings,{live: true})}
 		$('sheet-wrap').addEventListener('click',e => {const td=e.target.closest('td[data-r]'); if(td) openCell(+td.dataset.p,td.dataset.r)});
 
-		function openCell(p,r)
+		const cellSeq=() => game.players.flatMap((_,p) => [...UP,...LOW].map(r => ({p,r})));
+		function startQuickFill()
 		{
-			ed={p,r,buf: '',fresh: false};
+			const seq=cellSeq(),t=seq.find(x => game.players[x.p].cells[x.r]===undefined)||seq[0];
+			openCell(t.p,t.r,true);
+		}
+		function navCell(d)
+		{
+			const seq=cellSeq(),i=seq.findIndex(x => x.p===ed.p&&x.r===ed.r)+d;
+			if(i<0||i>=seq.length) return;
+			openCell(seq[i].p,seq[i].r,ed.quick);
+		}
+		function openCell(p,r,quick=false)
+		{
+			ed={p,r,buf: '',fresh: false,quick};
 			const cur=game.players[p].cells[r];
-			$('cell-title').innerText=`${game.players[p].name} · ${LABEL[r]||r}`;
+			const seq=[...UP,...LOW],pos=seq.indexOf(r)+1;
+			$('cell-title').innerHTML=`<span class="chip" style="${pstyle(game.players[p].name)};font-size:15px">${esc(game.players[p].name)}</span> <span style="display:inline-block;padding:1px 10px;border:2px solid currentColor;border-radius:8px;font-size:18px;font-weight:900"><small style="font-size:10px;font-weight:800;opacity:.7;margin-right:6px">CASE</small>${LABEL[r]||r}</span>${quick? `<div style="font-size:12px;opacity:.7;margin-top:4px">Case ${pos} / ${seq.length}</div><div style="height:8px;background:#0002;border-radius:4px;margin-top:4px;overflow:hidden"><div style="height:100%;width:${pos/seq.length*100}%;background:#e11d48"></div></div>`:''}`;
 			let h='';
 			if(UP.includes(r))
 			{
@@ -1955,7 +1915,8 @@
 				h=`<div class="kp-disp" id="kp-disp">${ed.buf}</div><div class="grid grid3 kp">${[1,2,3,4,5,6,7,8,9].map(d => `<button class="btn alt" onclick="kp('${d}')">${d}</button>`).join('')}<button class="btn alt" onclick="kp('b')">⌫</button><button class="btn alt" onclick="kp('0')">0</button><button class="btn gold" onclick="kpOk()">OK</button></div><div class="grid grid2" style="margin-top:8px"><button class="btn alt" onclick="setCell(0)">✕ Barré</button></div>`;
 			}
 			if(cur!==undefined) h+=`<button class="btn red" style="width:100%;margin-top:8px;padding:8px" onclick="setCell(undefined)">Effacer la case</button>`;
-			$('cell-body').innerHTML=thrHtml(game.players[p].throws&&game.players[p].throws[r])+h; openM('cell-modal');
+			const nav=quick? `<div class="grid grid2" style="margin-bottom:10px"><button class="btn alt nav" onclick="navCell(-1)">◀ Précédente</button><button class="btn alt nav" onclick="navCell(1)">Suivante ▶</button></div>`:'';
+			$('cell-body').innerHTML=nav+thrHtml(game.players[p].throws&&game.players[p].throws[r])+h; openM('cell-modal');
 		}
 		const thrHtml=t => `<div class="row" style="gap:16px;margin-bottom:10px;font-size:14px;font-weight:800"><span style="font-size:12px;opacity:.7">Réussi au :</span><label class="row" style="gap:6px;width:auto"><input type="checkbox" id="thr-first" style="width:22px;height:22px" ${t==='first'? 'checked':''} onchange="if(this.checked)$('thr-last').checked=false">⭐ 1er lancer</label><label class="row" style="gap:6px;width:auto"><input type="checkbox" id="thr-last" style="width:22px;height:22px" ${t==='last'? 'checked':''} onchange="if(this.checked)$('thr-first').checked=false⏱️ ">Dernier lancer</label></div>`;
 		function kp(d)
@@ -1977,7 +1938,8 @@
 			jset(K.STATE,game); closeM('cell-modal'); renderGame();
 			log('Score',game.players[ed.p].name,ed.r,'=',v,tf||'');
 			if(bad) toast('Attention : + doit être supérieur à −');
-			if(!game.prompted&&game.players.every(p => calc(p.cells,settings).filled===NCELLS)) {game.prompted=true; jset(K.STATE,game); setTimeout(() => openFinish(true),300)}
+			if(!game.prompted&&game.players.every(p => calc(p.cells,settings).filled===NCELLS)) {game.prompted=true; jset(K.STATE,game); setTimeout(() => openFinish(true),300); return}
+			if(ed.quick) navCell(1);
 		}
 
 		/* ---------- fin / enregistrement ---------- */
@@ -2329,25 +2291,9 @@
 		}
 		// Série signée : +n = n victoires d'affilée, −n = n défaites d'affilée
 		const streakOpp={};
-		const streakView={};
 		function setOpp(el) {const n=el.dataset.n; streakOpp[n]=el.value; el.closest('.stk').outerHTML=streakHtml(n,hist().sort((a,b) => sk(b).localeCompare(sk(a))||b.id-a.id))}
-		function streakControl(el,action)
-		{
-			const key=el.dataset.graph,state=streakView[key],max=+el.dataset.max;
-			if(action==='start') state.start=+el.value;
-			else if(action==='end') state.end=+el.value;
-			else
-			{
-				const span=state.end-state.start+1,center=(state.start+state.end)/2;
-				const next=action==='in'? Math.max(2,Math.ceil(span*.6)):action==='out'? Math.min(max+1,Math.ceil(span/0.6)):span;
-				const shift=action==='left'? -Math.max(1,Math.ceil(span/2)):action==='right'? Math.max(1,Math.ceil(span/2)):0;
-				if(shift) {state.start=Math.max(0,Math.min(max+1-span,state.start+shift)); state.end=state.start+span-1}
-				else {state.start=Math.max(0,Math.min(max+1-next,Math.floor(center-(next-1)/2))); state.end=state.start+next-1}
-			}
-			if(state.start>=state.end) {if(action==='start') state.start=Math.max(0,state.end-1); else state.end=Math.min(max,state.start+1)}
-			const root=el.closest('.stk'),name=root.dataset.name;
-			root.outerHTML=streakHtml(name,hist().sort((a,b) => sk(b).localeCompare(sk(a))||b.id-a.id));
-		}
+		// Positionne les graphiques nouvellement rendus sur les parties les plus récentes
+		const scrollStreaks=() => setTimeout(() => document.querySelectorAll('.stk-scroll:not([data-done])').forEach(e => {e.scrollLeft=e.scrollWidth; e.dataset.done='1'}),50);
 		function streakHtml(name,h)
 		{
 			const opp=streakOpp[name]||'';
@@ -2358,35 +2304,33 @@
 			const sel=`<select data-n="${esc(name)}" onchange="setOpp(this)" style="width:100%;margin:4px 0"><option value="">Contre tous les adversaires</option>${opps.map(o => `<option value="${esc(o)}"${o===opp? ' selected':''}>Contre ${esc(o)}</option>`).join('')}</select>`;
 			const nw=seq.filter(m => m.winner===name).length,nl=seq.length-nw;
 			const rec=`<div style="display:flex;gap:6px;margin:4px 0;font-weight:900;font-size:15px;text-align:center"><div style="flex:1;background:#dcfce7;border:2px solid #16a34a;border-radius:8px;padding:4px">${nw} victoire${nw>1? 's':''}</div><div style="flex:1;background:#fee2e2;border:2px solid var(--red);border-radius:8px;padding:4px">${nl} défaite${nl>1? 's':''}</div></div><div style="font-size:11px;font-weight:700">${opp? 'contre '+esc(opp):'contre tous les adversaires'}</div>`;
-			const graphKey=encodeURIComponent(JSON.stringify([name,opp]));
-			const view=streakView[graphKey]||(streakView[graphKey]={start:Math.max(0,seq.length-20),end:seq.length-1});
-			view.start=Math.max(0,Math.min(view.start,Math.max(0,seq.length-2))); view.end=Math.max(view.start,Math.min(view.end,seq.length-1));
-			const dateAt=i => seq[i].date? fmtDate(seq[i].date):'?';
-			const rangeControl=(part,index,label) => `<label style="display:grid;grid-template-columns:24px minmax(0,1fr) 58px;align-items:center;gap:4px;font-size:9px;line-height:1;font-weight:800"><span>${label}</span><input type="range" min="0" max="${seq.length-1}" value="${index}" data-graph="${graphKey}" data-max="${seq.length-1}" onchange="streakControl(this,'${part}')" style="width:100%;height:14px;margin:0"><span style="text-align:right">${dateAt(index)}</span></label>`;
-			const zoom=seq.length>1? `<div style="margin:4px 0 2px"><div style="display:flex;gap:3px;justify-content:flex-end;margin-bottom:2px"><button class="btn alt" style="padding:1px 7px;min-height:24px;border-width:2px;font-size:12px;line-height:1" aria-label="Parties précédentes" onclick="streakControl(this,'left')" data-graph="${graphKey}" data-max="${seq.length-1}">‹</button><button class="btn alt" style="padding:1px 7px;min-height:24px;border-width:2px;font-size:12px;line-height:1" aria-label="Zoom arrière" onclick="streakControl(this,'out')" data-graph="${graphKey}" data-max="${seq.length-1}">−</button><button class="btn alt" style="padding:1px 7px;min-height:24px;border-width:2px;font-size:12px;line-height:1" aria-label="Zoom avant" onclick="streakControl(this,'in')" data-graph="${graphKey}" data-max="${seq.length-1}">+</button><button class="btn alt" style="padding:1px 7px;min-height:24px;border-width:2px;font-size:12px;line-height:1" aria-label="Parties récentes" onclick="streakControl(this,'right')" data-graph="${graphKey}" data-max="${seq.length-1}">›</button></div>${rangeControl('start',view.start,'Du')}${rangeControl('end',view.end,'Au')}</div>`:'';
 			const head=`<div class="stk" data-name="${esc(name)}" style="margin-top:8px;border-top:2px dashed #000;padding-top:6px"><div style="font-size:12px;font-weight:800">📈 Série victoires / défaites (${seq.length} parties)</div>${sel}${rec}`;
 			const pts=[]; let cur=0;
-			seq.forEach((m,i) =>
+			seq.forEach(m =>
 			{
 				if(m.winner===name) cur=cur>0? cur+1:1; else cur=cur<0? cur-1:-1;
 				const player=m.players.find(p => p.name===name),score=player? matchScore(player,m):null;
 				pts.push({streak: cur,score,match: m});
 			});
-			const visible=pts.slice(view.start,view.end+1),W=360,H=190,L=38,R=38,T=24,B=27,n=visible.length,mx=Math.max(1,...visible.map(p => Math.abs(p.streak))),scores=visible.map(p => p.score).filter(v => typeof v==='number');
+			const n=pts.length,STEP=36,PX=20,H=200,T=24,B=34,AX=32,W=Math.max(260,PX*2+(n-1)*STEP);
+			const mx=Math.max(1,...pts.map(p => Math.abs(p.streak))),scores=pts.map(p => p.score).filter(v => typeof v==='number');
 			const scoreMin=scores.length? Math.min(...scores):0,scoreMax=scores.length? Math.max(...scores):1,pad=Math.max((scoreMax-scoreMin)*.12,5),lo=Math.max(0,scoreMin-pad),hi=Math.max(scoreMax+pad,lo+1);
-			const X=i => n===1? (L+W-R)/2:L+i*(W-L-R)/(n-1),YS=v => H-B-(v-lo)/(hi-lo)*(H-T-B),YT=v => T+(mx-v)/(2*mx)*(H-T-B);
-			const ticks=[0,.5,1].map(r =>
+			const X=i => n===1? W/2:PX+i*STEP,YS=v => H-B-(v-lo)/(hi-lo)*(H-T-B),YT=v => T+(mx-v)/(2*mx)*(H-T-B);
+			const rs=[0,.5,1],yAt=r => T+r*(H-T-B);
+			const grid=rs.map(r => `<line x1="0" x2="${W}" y1="${yAt(r).toFixed(1)}" y2="${yAt(r).toFixed(1)}" stroke="${r===.5? '#777':'#ddd'}" stroke-width="${r===.5? 1.2:.7}"/>`).join('');
+			const axis=(side) => `<svg width="${AX}" height="${H}" viewBox="0 0 ${AX} ${H}" style="display:block;flex:none;background:#fff;${side==='l'? 'border-right':'border-left'}:1px solid #ddd">${side==='l'? `<text x="${AX-3}" y="12" font-size="8" font-weight="800" fill="#1d4ed8" text-anchor="end">pts</text>`:`<text x="3" y="12" font-size="8" font-weight="800" fill="#166534">série</text>`}${rs.map(r =>
 			{
-				const y=T+r*(H-T-B),score=Math.round(hi-r*(hi-lo)),streak=Math.round(mx*(1-2*r));
-				return `<line x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${r===.5? '#777':'#ddd'}" stroke-width="${r===.5? 1.2:.7}"/><text x="${L-5}" y="${(y+3).toFixed(1)}" font-size="9" font-weight="700" text-anchor="end">${score}</text><text x="${W-R+5}" y="${(y+3).toFixed(1)}" font-size="9" font-weight="700">${streak>0? '+':''}${streak}</text>`
-			}).join('');
-			const streakLine=visible.map((p,i) => `${X(i).toFixed(1)},${YT(p.streak).toFixed(1)}`).join(' ');
-			let bestVisible=0,bestStart=0,bestEnd=0,runStart=0,run=0;
-			visible.forEach((p,i) => {if(p.streak>0) {run=run? run+1:1; if(run>bestVisible) {bestVisible=run; bestStart=runStart; bestEnd=i}} else {run=0; runStart=i+1}});
-			const bestLine=visible.slice(bestStart,bestEnd+1).map((p,i) => `${X(bestStart+i).toFixed(1)},${YT(p.streak).toFixed(1)}`).join(' ');
-			const streakDots=visible.map((p,i) => `<circle cx="${X(i).toFixed(1)}" cy="${YT(p.streak).toFixed(1)}" r="${n>25? 2.5:4}" fill="${p.streak>0? '#22c55e':'#ef4444'}" stroke="#000" stroke-width="1.2"><title>Partie ${view.start+i+1} · ${esc(fmtDT(p.match))} · série ${p.streak>0? '+':''}${p.streak}</title></circle>`).join('');
+				const y=(yAt(r)+3).toFixed(1),score=Math.round(hi-r*(hi-lo)),streak=Math.round(mx*(1-2*r));
+				return side==='l'? `<text x="${AX-3}" y="${y}" font-size="9" font-weight="700" text-anchor="end">${score}</text>`:`<text x="3" y="${y}" font-size="9" font-weight="700">${streak>0? '+':''}${streak}</text>`;
+			}).join('')}</svg>`;
+			const streakLine=pts.map((p,i) => `${X(i).toFixed(1)},${YT(p.streak).toFixed(1)}`).join(' ');
+			let best=0,bestStart=0,bestEnd=0,runStart=0,run=0;
+			pts.forEach((p,i) => {if(p.streak>0) {run=run? run+1:1; if(run>best) {best=run; bestStart=runStart; bestEnd=i}} else {run=0; runStart=i+1}});
+			const bestLine=pts.slice(bestStart,bestEnd+1).map((p,i) => `${X(bestStart+i).toFixed(1)},${YT(p.streak).toFixed(1)}`).join(' ');
+			const tip=(i,txt) => `data-tip="${esc(`Partie ${i+1} · ${fmtDT(pts[i].match)} · ${txt}`)}" onclick="toast(this.dataset.tip)" style="cursor:pointer"`;
+			const streakDots=pts.map((p,i) => `<circle cx="${X(i).toFixed(1)}" cy="${YT(p.streak).toFixed(1)}" r="4" fill="${p.streak>0? '#22c55e':'#ef4444'}" stroke="#000" stroke-width="1.2" ${tip(i,`série ${p.streak>0? '+':''}${p.streak}`)}/>`).join('');
 			const segments=[]; let segment=[];
-			visible.forEach((p,i) => {if(p.score===null) {if(segment.length) segments.push(segment); segment=[]} else segment.push({p,i})});
+			pts.forEach((p,i) => {if(p.score===null) {if(segment.length) segments.push(segment); segment=[]} else segment.push({p,i})});
 			if(segment.length) segments.push(segment);
 			const scoreLines=segments.filter(s => s.length>1).map(s =>
 			{
@@ -2398,14 +2342,15 @@
 				}
 				return `<path d="${path}" fill="none" stroke="#2563eb" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`;
 			}).join('');
-			const scoreDots=visible.map((p,i) => p.score===null? '':`<circle cx="${X(i).toFixed(1)}" cy="${YS(p.score).toFixed(1)}" r="4" fill="#2563eb" stroke="#fff" stroke-width="1.5"><title>Partie ${view.start+i+1} · ${esc(fmtDT(p.match))} · ${p.score} pts</title></circle>${n<=12? `<text x="${X(i).toFixed(1)}" y="${(YS(p.score)-8).toFixed(1)}" font-size="9" font-weight="900" text-anchor="middle">${p.score}</text>`:''}`).join('');
-			const step=Math.max(1,Math.ceil(n/7)),xl=visible.map((_,i) => i===0||i===n-1||i%step===0? `<text x="${X(i).toFixed(1)}" y="${H-5}" font-size="9" font-weight="700" text-anchor="middle">#${view.start+i+1}</text>`:'').join('');
-			const d=m => m.date? fmtDate(m.date):'?';
-			const last=pts[pts.length-1].streak;
+			const scoreDots=pts.map((p,i) => p.score===null? '':`<circle cx="${X(i).toFixed(1)}" cy="${YS(p.score).toFixed(1)}" r="5" fill="#2563eb" stroke="#fff" stroke-width="1.5" ${tip(i,`${p.score} pts`)}/><text x="${X(i).toFixed(1)}" y="${(YS(p.score)-8).toFixed(1)}" font-size="9" font-weight="900" text-anchor="middle" pointer-events="none">${p.score}</text>`).join('');
+			const dd=m => m.date? m.date.slice(8,10)+'/'+m.date.slice(5,7):'?';
+			const xl=pts.map((p,i) => `<text x="${X(i).toFixed(1)}" y="${H-19}" font-size="9" font-weight="800" text-anchor="middle">#${i+1}</text><text x="${X(i).toFixed(1)}" y="${H-7}" font-size="8" font-weight="600" text-anchor="middle" fill="#555">${dd(p.match)}</text>`).join('');
+			const last=pts[n-1].streak;
+			scrollStreaks();
 			return head+`
-	<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Scores et séries de ${esc(name)} par partie" style="width:100%;background:#fff;border:2px solid #000;border-radius:8px;margin-top:4px"><title>Scores et séries de ${esc(name)} par partie</title><text x="${L}" y="15" font-size="9" font-weight="800" fill="#1d4ed8">Score (pts)</text><text x="${W-R}" y="15" font-size="9" font-weight="800" fill="#166534" text-anchor="end">Série</text>${ticks}${scoreLines}<polyline points="${streakLine}" fill="none" stroke="#111827" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${bestVisible>1? `<polyline points="${bestLine}" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`:''}${scoreDots}${streakDots}${xl}</svg>${zoom}
+	<div style="display:flex;background:#fff;border:2px solid #000;border-radius:8px;margin-top:4px;overflow:hidden">${axis('l')}<div class="stk-scroll" style="flex:1;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Scores et séries de ${esc(name)} par partie" style="display:block"><title>Scores et séries de ${esc(name)} par partie</title>${grid}${scoreLines}<polyline points="${streakLine}" fill="none" stroke="#111827" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${best>1? `<polyline points="${bestLine}" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`:''}${scoreDots}${streakDots}${xl}</svg></div>${axis('r')}</div>
   <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:10px;font-weight:800;margin-top:3px"><span style="color:#2563eb">━ Score · axe gauche</span><span style="color:#166534">━ Série victoires/défaites · axe droit</span></div>
-  <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700"><span>Partie ${view.start+1} · ${d(visible[0].match)}</span><span>Partie ${view.end+1} · ${d(visible[n-1].match)}</span></div>
+  ${n>1? '<div style="font-size:10px;font-weight:700;opacity:.7">Glissez le graphique pour voir les parties précédentes · touchez un point pour le détail.</div>':''}
 				<div style="font-size:12px;font-weight:700;margin-top:4px">Série actuelle : ${last>0? last+' victoire(s)':Math.abs(last)+' défaite(s)'}</div></div>`;
 		}
 		function deleteMatch(id) {askConfirm('Supprimer cette partie ?','Action définitive.','Supprimer',() => {log('Partie supprimée',id); jset(K.DEL,[...jget(K.DEL,[]),id]); jset(K.HIST,hist().filter(m => m.id!==id)); renderHistory(); renderHome()})}
@@ -2416,7 +2361,7 @@
 			$('detail-title').innerText=`${fmtDT(m)} · 🏆 ${m.winner}`;
 			const pl=winFirst(m),totals=pl.map(p => matchScore(p,m));
 			$('detail-body').innerHTML=(pl.some(p => p.cells)
-				? `<div style="overflow-x:auto">${renderSheet(pl,m.rules||settings,{winner: m.winner,totals,recTotal: maxScore()})}</div><div style="font-size:11px;font-weight:700;margin-top:8px"><span style="background:#bbf7d0;border-radius:999px;padding:1px 8px">vert</span> meilleur de la ligne · <span style="background:#fffbea;padding:1px 8px;border:1px solid #eee">jaune</span> gagnant · <span class="rtag">★ RECORD</span> meilleur total jamais atteint</div>`
+				? `<div style="overflow-x:auto">${renderSheet(pl,m.rules||settings,{winner: m.winner,totals,recTotal: maxScore()})}</div><div style="font-size:11px;font-weight:700;margin-top:8px">Pastille à la couleur du joueur : meilleur de la ligne · ★ gagnant · <span class="rtag">★ RECORD</span> meilleur total jamais atteint</div>`
 				:`<p style="font-size:12px;font-weight:700">Détail des points non saisi.</p><div>${pl.map(p => `<div class="chip ${p.name===m.winner? 'w':''}" style="${pstyle(p.name)};display:block;font-size:16px;margin-bottom:6px">${p.name===m.winner? '★ ':''}${esc(p.name)} : ${matchScore(p,m)??'–'}${matchScore(p,m)!==null? ' pts':''}</div>`).join('')}</div>`)
 				+`<label class="l">Commentaire</label><textarea id="detail-comment" rows="3" maxlength="300" placeholder="Ajouter un commentaire">${esc(m.comment||'')}</textarea><button class="btn" style="margin-top:8px;width:100%" onclick="saveComment(${m.id},$('detail-comment').value)">💾 Enregistrer le commentaire</button>`;
 			closeM('history-modal'); openM('detail-modal');
