@@ -2590,9 +2590,11 @@
 				});
 				for(const [k,emo] of (emoji||[]).entries())
 				{
-					const size=Math.min(cv.width,cv.height)*.22,span=cv.width+size*2,prog=((fx.t*2+k*span/emoji.length)%span)/span,t=fx.t/8+k*2;
+					const size=Math.min(cv.width,cv.height)*.22,span=cv.width+size*2,raw=fx.t*2+k*span/emoji.length,prog=(raw%span)/span,t=fx.t/8+k*2;
+					// Tour complet vers la fin de la traversée, sens aléatoire à chaque passage
+					const dir=Math.sin(Math.floor(raw/span)*12.9898+k*78.233)>0? 1:-1,s=Math.min(1,Math.max(0,(prog-.5)/.25)),spin=dir*Math.PI*2*(s*s*(3-2*s));
 					ctx.save(); ctx.translate(-size+prog*span,cv.height*.65-Math.abs(Math.sin(t))*size*.8);
-					ctx.rotate(Math.sin(t*1.5)*.35); ctx.scale(1+Math.sin(t*2)*.12,1-Math.sin(t*2)*.12);
+					ctx.rotate(Math.sin(t*1.5)*.35+spin); ctx.scale(1+Math.sin(t*2)*.12,1-Math.sin(t*2)*.12);
 					ctx.font=size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(emo,0,0); ctx.restore();
 				}
 				fx.raf=requestAnimationFrame(loop);
