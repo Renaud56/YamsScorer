@@ -2556,11 +2556,11 @@
       ${hasSheet? `<button class="btn alt" onclick="closeCel();openDetail(${m.id})">📋 Voir le tableau</button>`:''}
       ${hasSheet? `<button class="btn gold" onclick="closeCel();beginGame(lastNames)">🎲 Rejouer</button>`:''}
       <button class="btn" onclick="closeCel()">Menu</button></div>`;
-			startFx(rec,ws.map(pemoji).filter(Boolean));
+			startFx(rec,ws.map(pemoji).filter(Boolean),m.players.filter(p => !ws.includes(p.name)).map(p => pemoji(p.name)).filter(Boolean));
 			if(navigator.vibrate) navigator.vibrate(rec? [200,100,200,100,500]:[150,80,150]);
 		}
 		function closeCel() {$('celebration').className=''; $('fx').classList.add('hidden'); cancelAnimationFrame(fx.raf)}
-		function startFx(rec,emoji)
+		function startFx(rec,emoji,losers)
 		{
 			const cv=$('fx'),ctx=cv.getContext('2d'); cv.classList.remove('hidden'); cv.width=innerWidth; cv.height=innerHeight;
 			fx.parts=[]; fx.t=0; cancelAnimationFrame(fx.raf);
@@ -2596,6 +2596,21 @@
 					ctx.save(); ctx.translate(-size+prog*span,cv.height*.65-Math.abs(Math.sin(t))*size*.8);
 					ctx.rotate(Math.sin(t*1.5)*.35+spin); ctx.scale(1+Math.sin(t*2)*.12,1-Math.sin(t*2)*.12);
 					ctx.font=size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(emo,0,0); ctx.restore();
+				}
+				// Perdants : traversée lente de droite à gauche, en pleurs
+				for(const [k,emo] of (losers||[]).entries())
+				{
+					const size=Math.min(cv.width,cv.height)*.14,span=cv.width+size*2,prog=((fx.t*.9+k*span/losers.length)%span)/span,t=fx.t/14+k*2;
+					const x=cv.width+size-prog*span,y=cv.height*.9-size*.5+Math.sin(t*2)*size*.04;
+					ctx.save(); ctx.translate(x,y); ctx.rotate(Math.sin(t)*.1);
+					ctx.font=size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(emo,0,0);
+					ctx.font=size*.45+'px serif'; ctx.fillText('😢',size*.45,-size*.55);
+					for(let i=0;i<2;i++)
+					{
+						const q=((fx.t/40+i*.5+k*.3)%1);
+						ctx.globalAlpha=1-q; ctx.fillStyle='#38bdf8'; ctx.beginPath(); ctx.ellipse((i? .22:-.22)*size,size*.1+q*size*.7,size*.05,size*.08,0,0,7); ctx.fill();
+					}
+					ctx.globalAlpha=1; ctx.restore();
 				}
 				fx.raf=requestAnimationFrame(loop);
 			})();
