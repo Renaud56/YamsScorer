@@ -1406,7 +1406,7 @@
 			<label class="l" id="fin-tl">Totaux (optionnels) <span class="fin-max"
 					style="text-transform:none;opacity:.7"></span></label>
 			<div id="fin-totals" class="grid"></div>
-			<label class="l">Gagnant (obligatoire)</label>
+			<label class="l" id="fin-wl">Gagnant (obligatoire)</label>
 			<select id="fin-winner" onchange="fin.manual=!!this.value;autoWinner()"></select>
 			<label class="l">Commentaire</label>
 			<textarea id="fin-comment" rows="2" maxlength="300" placeholder="Optionnel"></textarea>
@@ -1456,6 +1456,17 @@
 			<div id="players-list" class="grid" style="margin-top:10px"></div>
 			<p style="font-size:11px;opacity:.7">Supprimer un joueur efface aussi les parties auxquelles il a participé.
 			</p>
+		</div>
+	</div>
+
+	<!-- EMOJI ANIMAL -->
+	<div id="emoji-modal" class="modal" style="z-index:60" onclick="if(event.target===this)closeM('emoji-modal')">
+		<div class="box">
+			<div class="mh">
+				<h3 class="t" style="margin:0">Choisir un animal</h3><button class="x" onclick="closeM('emoji-modal')">✕</button>
+			</div>
+			<div id="emoji-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;max-height:50vh;overflow-y:auto"></div>
+			<button class="btn red" style="width:100%;margin-top:10px;padding:8px" onclick="setEmoji('')">Retirer l'emoji</button>
 		</div>
 	</div>
 
@@ -1617,7 +1628,8 @@
 				match(1788714300014,'2026-09-06','17:55','Elo',[['Elo',319],['Ren',276],['Licù',292]]),
 				match(1789319100015,'2026-09-13','21:00','Ren',[['Ren',314],['Joueur 1',297],['Elo',306]]),
 				match(1789933500010,'2026-09-20','18:20','Ren',[['Ren',311],['Elo',278]]),
-				match(1790528700016,'2026-09-27','19:35','Licù',[['Licù',309],['Ren',287],['Joueur 1',324]])
+				match(1790528700016,'2026-09-27','19:35','Licù',[['Licù',309],['Ren',287],['Joueur 1',324]]),
+				match(1791133500017,'2026-10-04','19:00','Ren',[['Ren',300],['Elo',300]],'Égalité parfaite')
 			];
 		})();
 	</script>
@@ -1625,8 +1637,10 @@
 		const $=id => document.getElementById(id);
 		const log=(...a) => console.log('[Yams]',...a);
 		const TEST_MODE=new URLSearchParams(location.search).get('test')==='1';
-		const K={STATE: 'yams_state',HIST: 'yams_history',SET: 'yams_settings',PLAYERS: 'yams_players',HIDDEN: 'yams_players_hidden',COLORS: 'yams_colors',DEL: 'yams_deleted',TS: 'yams_ts',SYNC: 'yams_sync'};
-		const SYNCED=[K.HIST,K.SET,K.PLAYERS,K.HIDDEN,K.COLORS,K.DEL];
+		const K={STATE: 'yams_state',HIST: 'yams_history',SET: 'yams_settings',PLAYERS: 'yams_players',HIDDEN: 'yams_players_hidden',COLORS: 'yams_colors',EMOJI: 'yams_emoji',DEL: 'yams_deleted',TS: 'yams_ts',SYNC: 'yams_sync'};
+		const SYNCED=[K.HIST,K.SET,K.PLAYERS,K.HIDDEN,K.COLORS,K.EMOJI,K.DEL];
+		const ANIMALS='🐶🐱🐭🐹🐰🦊🐻🐼🐨🐯🦁🐮🐷🐸🐵🙈🙉🙊🐔🐧🐦🐤🦆🦅🦉🦇🐺🐗🐴🦄🐝🪲🐛🦋🐌🐞🐜🪰🦟🕷️🦂🐢🐍🦎🦖🦕🐙🦑🦐🦞🦀🐡🐠🐟🐬🐳🐋🦈🐊🐅🐆🦓🦍🦧🐘🦛🦏🐪🐫🦒🦘🐃🐂🐄🐎🐖🐏🐑🦙🐐🦌🐕🐩🐈🐓🦃🦚🦜🦢🦩🕊️🐇🦝🦨🦡🦫🦦🦥🐁🐀🐿️🦔🐉🐲🦭🦬🦣🦤🪿🦫'.match(/\p{Extended_Pictographic}\uFE0F?/gu);
+		const pemoji=n => (jget(K.EMOJI,{})[(n||'').toLowerCase()])||'';
 		let applying=false;
 		const UP=['1','2','3','4','5','6'];
 		const LOW=['brelan','carre','full','gs','ps','plus','minus','yams'];
@@ -1637,8 +1651,9 @@
 		const HINT={gs: 'grande suite',ps: 'petite suite',plus: 'max',minus: 'min'};
 		const DEF={playerCount: 2,names: [],pts: {full: 25,gs: 40,ps: 30,yams: 50},thr: 63,bonus: 35};
 
-		const jget=(k,d) => {if(TEST_MODE) return k===K.HIST? window.YAMS_TEST_HISTORY||d:d; try {const v=JSON.parse(localStorage.getItem(k)); return v==null? d:v} catch(e) {return d} };
-		const jset=(k,v) => {if(TEST_MODE) return; try {localStorage.setItem(k,JSON.stringify(v)); if(!applying&&SYNCED.includes(k)) {localStorage.setItem(K.TS,Date.now()); scheduleSync()} } catch(e) {} };
+		const testMem={[K.EMOJI]: {ren: '🦊',elo: '🐼','licù': '🦁','joueur 1': '🐸'}};
+		const jget=(k,d) => {if(TEST_MODE) return k===K.HIST? window.YAMS_TEST_HISTORY||d:testMem[k]??d; try {const v=JSON.parse(localStorage.getItem(k)); return v==null? d:v} catch(e) {return d} };
+		const jset=(k,v) => {if(TEST_MODE) {if(k===K.EMOJI||k===K.COLORS) testMem[k]=v; return} try {localStorage.setItem(k,JSON.stringify(v)); if(!applying&&SYNCED.includes(k)) {localStorage.setItem(K.TS,Date.now()); scheduleSync()} } catch(e) {} };
 		const esc=s => String(s).replace(/[&<>"']/g,c => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'}[c]));
 		const hist=() => jget(K.HIST,[]);
 		const today=() => {const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
@@ -1668,6 +1683,10 @@
 			return {up,bonus,haut,bas,total: haut+bas,filled};
 		}
 		const matchScore=(player,match) => typeof player.total==='number'? player.total:player.cells? calc(player.cells,match.rules||settings).total:null;
+		// Égalité : plusieurs joueurs au meilleur total (le gagnant enregistré n'est alors qu'un choix par défaut)
+		const winnersOf=m => {const s=m.players.map(p => ({n: p.name,v: matchScore(p,m)})).filter(x => x.v!==null),mx=Math.max(...s.map(x => x.v)),w=s.filter(x => x.v===mx).map(x => x.n); return w.length>1? w:[m.winner]};
+		const isWinner=(m,n) => winnersOf(m).includes(n);
+		const isTie=m => winnersOf(m).length>1;
 		const warn=(p,k) => {const c=p.cells||{}; return (k==='plus'||k==='minus')&&typeof c.plus==='number'&&typeof c.minus==='number'&&c.plus>0&&c.minus>0&&c.plus<=c.minus};
 		const PAL=[['#c62828','#fff'],['#1565c0','#fff'],['#2e7d32','#fff'],['#ef6c00','#fff']];
 		const textOn=h => {const n=parseInt(h.slice(1),16),l=.299*(n>>16)+.587*(n>>8&255)+.114*(n&255); return l>150? '#000':'#fff'};
@@ -1679,10 +1698,10 @@
 		{
 			const c=players.map(p => calc(p.cells,r));
 			const columnStyle=i => {const colors=pcol(players[i].name); return `--player-bg:${colors[0]};--player-fg:${colors[1]}`};
-			const w=i => o.winner===players[i].name? ' win':'';
+			const w=i => (o.winners||[]).includes(players[i].name)? ' win':'';
 			const ti=o.live&&players.length>1? c.findIndex(x => x.filled<Math.max(...c.map(y => y.filled))):-1,turn=ti>=0? ti:(o.live&&players.length>1&&c.some(x => x.filled<NCELLS)? 0:-1);
 			const tc=i => i===turn? ' tc':'';
-			const head=players.map((p,i) => {const t=o.totals? o.totals[i]:c[i].total; return `<th class="${(w(i)+(i===turn? ' turn':'')).trim()}" style="${pstyle(p.name)}${w(i)? `;box-shadow:inset 0 -6px 0 ${pcol(p.name)[0]}`:''}"><div class="pn">${w(i)? '★ ':''}${esc(p.name)}</div><div class="pt">${t==null? '–':t}</div>${i===turn? '<span class="tt">▶ SON TOUR</span>':''}${o.recTotal!=null&&t===o.recTotal? '<div class="rtag">★ RECORD</div>':''}</th>`}).join('');
+			const head=players.map((p,i) => {const t=o.totals? o.totals[i]:c[i].total; return `<th class="${(w(i)+(i===turn? ' turn':'')).trim()}" style="${pstyle(p.name)}${w(i)? `;box-shadow:inset 0 -6px 0 ${pcol(p.name)[0]}`:''}"><div class="pn">${w(i)? '★ ':''}${o.live&&pemoji(p.name)? pemoji(p.name)+' ':''}${esc(p.name)}</div><div class="pt">${t==null? '–':t}</div>${i===turn? '<span class="tt">▶ SON TOUR</span>':''}${o.recTotal!=null&&t===o.recTotal? '<div class="rtag">★ RECORD</div>':''}</th>`}).join('');
 			const inRow=k =>
 			{
 				const mx=Math.max(0,...players.map(p => p.cells&&typeof p.cells[k]==='number'? p.cells[k]:0)); return `<tr><th class="rl">${rowLabel(k)}</th>${players.map((p,i) =>
@@ -1790,8 +1809,21 @@
 			$('players-list').innerHTML=l.length? l.map((n,i) =>
 			{
 				const c=played[n.toLowerCase()]||0;
-				return `<div class="row" style="justify-content:space-between;border:2px solid #000;border-radius:10px;padding:6px 10px"><div><b style="${pstyle(n)};border-radius:6px;padding:1px 8px">${esc(n)}</b><br><small>${c} partie${c>1? 's':''}</small></div><div class="row"><input type="color" value="${pcol(n)[0]}" style="width:46px;height:38px;padding:2px" onchange="setColor(${i},this.value)"><button class="btn alt" style="padding:6px 10px" onclick="resetColor(${i})">↺</button><button class="btn red" style="padding:6px 10px" onclick="removePlayer(${i})">🗑</button></div></div>`
+				return `<div class="row" style="justify-content:space-between;border:2px solid #000;border-radius:10px;padding:6px 10px"><div><b style="${pstyle(n)};border-radius:6px;padding:1px 8px">${esc(n)}</b><br><small>${c} partie${c>1? 's':''}</small></div><div class="row"><button class="btn alt" style="padding:4px 10px;font-size:22px" onclick="openEmoji(${i})">${pemoji(n)||'🐾'}</button><input type="color" value="${pcol(n)[0]}" style="width:46px;height:38px;padding:2px" onchange="setColor(${i},this.value)"><button class="btn alt" style="padding:6px 10px" onclick="resetColor(${i})">↺</button><button class="btn red" style="padding:6px 10px" onclick="removePlayer(${i})">🗑</button></div></div>`
 			}).join(''):'<p style="text-align:center">Aucun joueur.</p>';
+		}
+		let emojiIdx=0;
+		function openEmoji(i)
+		{
+			emojiIdx=i;
+			$('emoji-grid').innerHTML=ANIMALS.map(e => `<button class="btn alt" style="padding:4px;font-size:28px" onclick="setEmoji('${e}')">${e}</button>`).join('');
+			openM('emoji-modal');
+		}
+		function setEmoji(e)
+		{
+			const m=jget(K.EMOJI,{}),k=known()[emojiIdx].toLowerCase();
+			if(e) m[k]=e; else delete m[k];
+			jset(K.EMOJI,m); closeM('emoji-modal'); renderPlayersList();
 		}
 		function setColor(i,v) {const c=jget(K.COLORS,{}); c[known()[i].toLowerCase()]=v; jset(K.COLORS,c); renderPlayersList()}
 		function resetColor(i) {const c=jget(K.COLORS,{}); delete c[known()[i].toLowerCase()]; jset(K.COLORS,c); renderPlayersList()}
@@ -2030,6 +2062,7 @@
 			if(fin.manual) return colorWinner();
 			const t=finTotals(); const mx=Math.max(...t.map(x => x==null? -1:x));
 			$('fin-winner').value=mx>=0? fin.players[t.indexOf(mx)].name:''; colorWinner();
+			$('fin-wl').innerText=t.filter(x => x===mx).length>1&&mx>=0? 'Gagnant (égalité : comptabilisée comme telle)':'Gagnant (obligatoire)';
 		}
 		function colorWinner() {const w=$('fin-winner'); w.style.cssText=w.value? `${pstyle(w.value)};font-weight:800`:''}
 		function saveFinish()
@@ -2059,7 +2092,7 @@
 		const maxOf=m => {const scores=m.players.map(p => matchScore(p,m)).filter(x => x!==null); return scores.length? Math.max(...scores):null};
 		function cellRecords() {const r={}; hist().forEach(m => m.players.forEach(p => {if(p.cells) for(const k in p.cells) if(p.cells[k]>(r[k]||0)) r[k]=p.cells[k]})); return r}
 		const sk=m => (m.date||new Date(m.id).toISOString().slice(0,10))+' '+(m.time||'12:00');
-		const winFirst=m => [...m.players].sort((a,b) => (b.name===m.winner)-(a.name===m.winner));
+		const winFirst=m => [...m.players].sort((a,b) => isWinner(m,b.name)-isWinner(m,a.name));
 		function closeDetail() {closeM('detail-modal'); openHistory()}
 		function openHistory() {renderHistory(); openM('history-modal')}
 		function switchTab(t)
@@ -2084,8 +2117,8 @@
 				const rec=mx!=null&&mx===gmax;
 				return `<div class="card hcard${rec? ' rec':''}"><div class="top"><span>${fmtDT(m)}</span><span>${rec? '<span class="tag">🔥 RECORD</span> ':''}${mx!=null? 'Max : '+mx+' pts':'Score non saisi'}</span></div>
 				${top? `<div style="display:flex;align-items:center;gap:10px;border:3px solid #000;border-radius:12px;padding:6px 12px;margin-bottom:8px;background:${['#fde047','#e5e7eb','#fdba74'][ix]}"><span style="font-size:40px">${['🥇','🥈','🥉'][ix]}</span><div style="flex:1;min-width:0"><div style="display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:3px solid #000;border-radius:10px;padding:2px 12px;font-size:24px;font-weight:900;${pstyle(topE[ix].p.name)}">${esc(topE[ix].p.name)}</div><div style="font-size:30px;font-weight:900;line-height:1.1">${topE[ix].score} <span style="font-size:14px;font-weight:800">pts</span></div></div><span style="font-size:22px;font-weight:900">#${ix+1}</span></div>`:''}
-    <div style="font-weight:900;font-size:16px">🏆 ${esc(m.winner)}</div>
-	    <div>${winFirst(m).map(p => {const score=matchScore(p,m); return `<span class="chip ${p.name===m.winner? 'w':''}" style="${pstyle(p.name)}">${p.name===m.winner? '🏆 ':''}${esc(p.name)}${score!==null? ' · '+score+(score===mx? ' 👑':''):''}</span>`}).join('')}</div>
+    <div style="font-weight:900;font-size:16px">${isTie(m)? '🤝 Égalité : '+winnersOf(m).map(esc).join(' & '):'🏆 '+esc(m.winner)}</div>
+	    <div>${winFirst(m).map(p => {const score=matchScore(p,m),win=isWinner(m,p.name); return `<span class="chip ${win? 'w':''}" style="${pstyle(p.name)}">${win? (isTie(m)? '🤝 ':'🏆 '):''}${esc(p.name)}${score!==null? ' · '+score+(score===mx? ' 👑':''):''}</span>`}).join('')}</div>
     ${m.comment? `<div style="font-size:12px;font-style:italic;margin-top:4px">💬 ${esc(m.comment)}</div>`:''}
     <div class="grid grid2" style="margin-top:8px;grid-template-columns:3fr 1fr"><button class="btn" style="padding:8px" onclick="openDetail(${m.id})">Détails</button><button class="btn red" style="padding:8px" onclick="deleteMatch(${m.id})">🗑</button></div></div>`
 			};
@@ -2102,8 +2135,8 @@
 			const s={};
 			h.forEach(m => m.players.forEach(p =>
 			{
-				const x=s[p.name]||(s[p.name]={n: p.name,g: 0,w: 0,sum: 0,k: 0,best: null,bd: null,y: 0,bonusGames: 0,bonusEligible: 0,bestUp: null,bestLow: null,worst: null,worstUp: null,worstLow: null});
-				x.g++; if(m.winner===p.name) x.w++;
+				const x=s[p.name]||(s[p.name]={n: p.name,g: 0,w: 0,t: 0,sum: 0,k: 0,best: null,bd: null,y: 0,bonusGames: 0,bonusEligible: 0,bestUp: null,bestLow: null,worst: null,worstUp: null,worstLow: null});
+				x.g++; if(isWinner(m,p.name)) {if(isTie(m)) x.t++; else x.w++}
 				const score=matchScore(p,m);
 				if(score!==null) {x.sum+=score; x.k++; if(x.best===null||score>x.best) {x.best=score; x.bd=m.date}; x.worst=x.worst===null? score:Math.min(x.worst,score) }
 				if(p.cells&&p.cells.yams>0) x.y++;
@@ -2134,7 +2167,7 @@
 				const tile=(label,value,detail='',tone='') => `<div class="player-stat-tile${tone? ' '+tone:''}"><span class="label">${label}</span><strong>${value}</strong>${detail? `<small>${detail}</small>`:''}</div>`;
 				const form=x.current>0? '🔥 '+x.current+' victoire'+(x.current>1? 's':'')+' d’affilée':x.current<0? '🧊 '+Math.abs(x.current)+' défaite'+(x.current<-1? 's':'')+' d’affilée':'Série neutre';
 				return `<div class="card hcard"><div class="player-identity"><span>#${x.rank} ${esc(x.n)}</span><strong>${x.elo} ELO</strong></div>
-				<div class="player-stat-tiles">${tile('Forme actuelle',form,'','form')}${tile('Record personnel'+(isH? ' · record absolu':''),x.best===null? '–':x.best+' pts',x.bd? 'Atteint le '+fmtDate(x.bd):'','accent')}${tile('Moyenne par partie',avg===null? '–':avg+' pts',x.k+' score'+(x.k>1? 's':'')+' enregistré'+(x.k>1? 's':''))}${tile('Taux de victoire',rate+'%',x.w+' victoire'+(x.w>1? 's':'')+' sur '+x.g+' parties')}${tile('Parties jouées',x.g)}${tile('Série maximale',x.longest,x.longest+' victoire'+(x.longest>1? 's':'')+' consécutive'+(x.longest>1? 's':''))}</div>
+				<div class="player-stat-tiles">${tile('Forme actuelle',form,'','form')}${tile('Record personnel'+(isH? ' · record absolu':''),x.best===null? '–':x.best+' pts',x.bd? 'Atteint le '+fmtDate(x.bd):'','accent')}${tile('Moyenne par partie',avg===null? '–':avg+' pts',x.k+' score'+(x.k>1? 's':'')+' enregistré'+(x.k>1? 's':''))}${tile('Taux de victoire',rate+'%',x.w+' victoire'+(x.w>1? 's':'')+(x.t? ' · '+x.t+' égalité'+(x.t>1? 's':''):'')+' sur '+x.g+' parties')}${tile('Parties jouées',x.g)}${tile('Série maximale',x.longest,x.longest+' victoire'+(x.longest>1? 's':'')+' consécutive'+(x.longest>1? 's':''))}</div>
 	${streakHtml(x.n,h)}</div>`
 			}).join(''):'<p style="text-align:center;font-size:13px">Aucune donnée.</p>';
 			$('hist-fame').innerHTML=l.length? fameExtrasHtml(l,h,holders,gmax):'<p style="text-align:center;font-size:13px">Aucune donnée.</p>';
@@ -2189,7 +2222,8 @@
 				['Moyenne',x => avg(x)??'–',x => avg(x)!=null&&avg(x)===max.a],
 				['ELO',x => x.elo,x => x.elo===max.elo],
 				['Victoires',x => x.w,x => x.w===max.w&&x.w>0],
-				['Défaites',x => x.g-x.w,() => false],
+				['Égalités',x => x.t,() => false],
+				['Défaites',x => x.g-x.w-x.t,() => false],
 				['% victoire',x => rate(x)===null? '–':rate(x)+'%',x => rate(x)===max.r&&rate(x)>0],
 				['Nb parties',x => x.g,x => x.g===max.g],
 				['YAMS',x => x.y,x => x.y===max.y&&x.y>0],
@@ -2208,18 +2242,19 @@
 		function versusStats(matches,names,globalPlayers)
 		{
 			const ordered=[...matches].sort((a,b) => sk(a).localeCompare(sk(b))||a.id-b.id);
-			const stats=names.map(n => ({n,g: 0,w: 0,sum: 0,k: 0,best: null,bd: null,y: 0,bonusGames: 0,bonusEligible: 0,bestUp: null,bestLow: null,worst: null,worstUp: null,worstLow: null,longest: 0,elo: 1000}));
+			const stats=names.map(n => ({n,g: 0,w: 0,t: 0,sum: 0,k: 0,best: null,bd: null,y: 0,bonusGames: 0,bonusEligible: 0,bestUp: null,bestLow: null,worst: null,worstUp: null,worstLow: null,longest: 0,elo: 1000}));
 			const streaks=[0,0];
 			ordered.forEach(m =>
 			{
 				const selected=names.map(n => m.players.find(p => p.name===n));
 				const scores=selected.map(p => matchScore(p,m));
 				let winner=m.winner;
-				if(scores[0]!==null&&scores[1]!==null&&scores[0]!==scores[1]) winner=scores[0]>scores[1]? names[0]:names[1];
+				const tie=scores[0]!==null&&scores[0]===scores[1];
+				if(scores[0]!==null&&scores[1]!==null&&!tie) winner=scores[0]>scores[1]? names[0]:names[1];
 				selected.forEach((p,i) =>
 			{
 					const x=stats[i],score=scores[i];
-					x.g++; if(winner===names[i]) {x.w++; streaks[i]++} else streaks[i]=0;
+					x.g++; if(tie) {x.t++; streaks[i]=0} else if(winner===names[i]) {x.w++; streaks[i]++} else streaks[i]=0;
 					x.longest=Math.max(x.longest,streaks[i]);
 					if(score!==null) {x.sum+=score; x.k++; if(x.best===null||score>x.best) {x.best=score; x.bd=m.date}; x.worst=x.worst===null? score:Math.min(x.worst,score)}
 					if(p.cells)
@@ -2242,7 +2277,8 @@
 			[...h].sort((a,b) => sk(a).localeCompare(sk(b))||a.id-b.id).forEach(m =>
 			{
 				const p=m.players.find(x => x.name===name); if(!p) return;
-				if(m.winner===name) {current=current>0? current+1:1; longest=Math.max(longest,current)} else current=current<0? current-1:-1;
+				if(isTie(m)&&isWinner(m,name)) current=0;
+				else if(m.winner===name) {current=current>0? current+1:1; longest=Math.max(longest,current)} else current=current<0? current-1:-1;
 			});
 			return {longest,current};
 		}
@@ -2359,16 +2395,16 @@
 			const opp=streakOpp[name]||'';
 			const all=[...h].reverse().filter(m => m.players.some(p => p.name===name));
 			const opps=[...new Set(all.flatMap(m => m.players.map(p => p.name)).filter(n => n!==name))];
-			const seq=opp? all.filter(m => m.players.some(p => p.name===opp)&&(m.winner===name||m.winner===opp)):all;
+			const seq=opp? all.filter(m => m.players.some(p => p.name===opp)&&(isWinner(m,name)||isWinner(m,opp))):all;
 			if(!seq.length) return '';
 			const sel=`<select data-n="${esc(name)}" onchange="setOpp(this)" style="width:100%;margin:4px 0"><option value="">Contre tous les adversaires</option>${opps.map(o => `<option value="${esc(o)}"${o===opp? ' selected':''}>Contre ${esc(o)}</option>`).join('')}</select>`;
-			const nw=seq.filter(m => m.winner===name).length,nl=seq.length-nw;
-			const rec=`<div style="display:flex;gap:6px;margin:4px 0;font-weight:900;font-size:15px;text-align:center"><div style="flex:1;background:#dcfce7;border:2px solid #16a34a;border-radius:8px;padding:4px">${nw} victoire${nw>1? 's':''}</div><div style="flex:1;background:#fee2e2;border:2px solid var(--red);border-radius:8px;padding:4px">${nl} défaite${nl>1? 's':''}</div></div><div style="font-size:11px;font-weight:700">${opp? 'contre '+esc(opp):'contre tous les adversaires'}</div>`;
+			const nt=seq.filter(m => isTie(m)&&isWinner(m,name)).length,nw=seq.filter(m => isWinner(m,name)).length-nt,nl=seq.length-nw-nt;
+			const rec=`<div style="display:flex;gap:6px;margin:4px 0;font-weight:900;font-size:15px;text-align:center"><div style="flex:1;background:#dcfce7;border:2px solid #16a34a;border-radius:8px;padding:4px">${nw} victoire${nw>1? 's':''}</div>${nt? `<div style="flex:1;background:#e5e7eb;border:2px solid #6b7280;border-radius:8px;padding:4px">${nt} égalité${nt>1? 's':''}</div>`:''}<div style="flex:1;background:#fee2e2;border:2px solid var(--red);border-radius:8px;padding:4px">${nl} défaite${nl>1? 's':''}</div></div><div style="font-size:11px;font-weight:700">${opp? 'contre '+esc(opp):'contre tous les adversaires'}</div>`;
 			const head=`<div class="stk" data-name="${esc(name)}" style="margin-top:8px;border-top:2px dashed #000;padding-top:6px"><div style="font-size:12px;font-weight:800">📈 Série victoires / défaites (${seq.length} parties)</div>${sel}${rec}`;
 			const pts=[]; let cur=0;
 			seq.forEach(m =>
 			{
-				if(m.winner===name) cur=cur>0? cur+1:1; else cur=cur<0? cur-1:-1;
+				if(isTie(m)&&isWinner(m,name)) cur=0; else if(isWinner(m,name)) cur=cur>0? cur+1:1; else cur=cur<0? cur-1:-1;
 				const player=m.players.find(p => p.name===name),score=player? matchScore(player,m):null;
 				pts.push({streak: cur,score,match: m});
 			});
@@ -2388,7 +2424,7 @@
 			pts.forEach((p,i) => {if(p.streak>0) {run=run? run+1:1; if(run>best) {best=run; bestStart=runStart; bestEnd=i}} else {run=0; runStart=i+1}});
 			const bestLine=pts.slice(bestStart,bestEnd+1).map((p,i) => `${X(bestStart+i).toFixed(1)},${YT(p.streak).toFixed(1)}`).join(' ');
 			const tip=(i,txt) => `data-tip="${esc(`Partie ${i+1} · ${fmtDT(pts[i].match)} · ${txt}`)}" onclick="toast(this.dataset.tip)" style="cursor:pointer"`;
-			const streakDots=pts.map((p,i) => `<circle cx="${X(i).toFixed(1)}" cy="${YT(p.streak).toFixed(1)}" r="4" fill="${p.streak>0? '#22c55e':'#ef4444'}" stroke="#000" stroke-width="1.2" ${tip(i,`série ${p.streak>0? '+':''}${p.streak}`)}/>`).join('');
+			const streakDots=pts.map((p,i) => `<circle cx="${X(i).toFixed(1)}" cy="${YT(p.streak).toFixed(1)}" r="4" fill="${p.streak>0? '#22c55e':p.streak===0? '#9ca3af':'#ef4444'}" stroke="#000" stroke-width="1.2" ${tip(i,p.streak===0? 'égalité':`série ${p.streak>0? '+':''}${p.streak}`)}/>`).join('');
 			const segments=[]; let segment=[];
 			pts.forEach((p,i) => {if(p.score===null) {if(segment.length) segments.push(segment); segment=[]} else segment.push({p,i})});
 			if(segment.length) segments.push(segment);
@@ -2411,18 +2447,18 @@
 	<div style="display:flex;background:#fff;border:2px solid #000;border-radius:8px;margin-top:4px;overflow:hidden">${axis('l')}<div class="stk-scroll" style="flex:1;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:thin;cursor:grab;user-select:none"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Scores et séries de ${esc(name)} par partie" style="display:block"><title>Scores et séries de ${esc(name)} par partie</title>${grid}${scoreLines}<polyline points="${streakLine}" fill="none" stroke="#111827" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${best>1? `<polyline points="${bestLine}" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`:''}${scoreDots}${streakDots}${xl}</svg></div>${axis('r')}</div>
   <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:10px;font-weight:800;margin-top:3px"><span style="color:#2563eb">━ Score · axe gauche</span><span style="color:#166534">━ Série victoires/défaites · axe droit</span></div>
   ${n>1? '<div style="font-size:10px;font-weight:700;opacity:.7">Glissez le graphique pour voir les parties précédentes · touchez un point pour le détail.</div>':''}
-				<div style="font-size:12px;font-weight:700;margin-top:4px">Série actuelle : ${last>0? last+' victoire(s)':Math.abs(last)+' défaite(s)'}</div></div>`;
+				<div style="font-size:12px;font-weight:700;margin-top:4px">Série actuelle : ${last>0? last+' victoire(s)':last===0? 'égalité':Math.abs(last)+' défaite(s)'}</div></div>`;
 		}
 		function deleteMatch(id) {askConfirm('Supprimer cette partie ?','Action définitive.','Supprimer',() => {log('Partie supprimée',id); jset(K.DEL,[...jget(K.DEL,[]),id]); jset(K.HIST,hist().filter(m => m.id!==id)); renderHistory(); renderHome()})}
 		function clearHistory() {askConfirm("Effacer l'historique ?",'Toutes les parties seront supprimées. Action définitive.','Tout effacer',() => {log('Historique effacé'); jset(K.DEL,[...jget(K.DEL,[]),...hist().map(m => m.id)]); jset(K.HIST,[]); renderHistory(); renderHome()})}
 		function openDetail(id)
 		{
 			const m=hist().find(x => x.id===id); if(!m) return;
-			$('detail-title').innerText=`${fmtDT(m)} · 🏆 ${m.winner}`;
+			$('detail-title').innerText=`${fmtDT(m)} · ${isTie(m)? '🤝 Égalité : '+winnersOf(m).join(' & '):'🏆 '+m.winner}`;
 			const pl=winFirst(m),totals=pl.map(p => matchScore(p,m));
 			$('detail-body').innerHTML=(pl.some(p => p.cells)
-				? `<div style="overflow-x:auto">${renderSheet(pl,m.rules||settings,{winner: m.winner,totals,recTotal: maxScore()})}</div><div style="font-size:11px;font-weight:700;margin-top:8px">Pastille à la couleur du joueur : meilleur de la ligne · ★ gagnant · <span class="rtag">★ RECORD</span> meilleur total jamais atteint</div>`
-				:`<p style="font-size:12px;font-weight:700">Détail des points non saisi.</p><div>${pl.map(p => `<div class="chip ${p.name===m.winner? 'w':''}" style="${pstyle(p.name)};display:block;font-size:16px;margin-bottom:6px">${p.name===m.winner? '★ ':''}${esc(p.name)} : ${matchScore(p,m)??'–'}${matchScore(p,m)!==null? ' pts':''}</div>`).join('')}</div>`)
+				? `<div style="overflow-x:auto">${renderSheet(pl,m.rules||settings,{winners: winnersOf(m),totals,recTotal: maxScore()})}</div><div style="font-size:11px;font-weight:700;margin-top:8px">Pastille à la couleur du joueur : meilleur de la ligne · ★ gagnant · <span class="rtag">★ RECORD</span> meilleur total jamais atteint</div>`
+				:`<p style="font-size:12px;font-weight:700">Détail des points non saisi.</p><div>${pl.map(p => `<div class="chip ${isWinner(m,p.name)? 'w':''}" style="${pstyle(p.name)};display:block;font-size:16px;margin-bottom:6px">${isWinner(m,p.name)? '★ ':''}${esc(p.name)} : ${matchScore(p,m)??'–'}${matchScore(p,m)!==null? ' pts':''}</div>`).join('')}</div>`)
 				+`<label class="l">Commentaire</label><textarea id="detail-comment" rows="3" maxlength="300" placeholder="Ajouter un commentaire">${esc(m.comment||'')}</textarea><button class="btn" style="margin-top:8px;width:100%" onclick="saveComment(${m.id},$('detail-comment').value)">💾 Enregistrer le commentaire</button>`;
 			closeM('history-modal'); openM('detail-modal');
 		}
@@ -2508,23 +2544,23 @@
 		const fx={raf: 0,parts: [],t: 0};
 		function celebrate(m,rec,prevMax)
 		{
-			const w=m.players.find(p => p.name===m.winner),sc=typeof w.total==='number'? w.total:null;
+			const w=m.players.find(p => p.name===m.winner),sc=typeof w.total==='number'? w.total:null,ws=winnersOf(m),tie=ws.length>1;
 			$('celebration').className='show'+(rec? ' record':'');
 			const hasSheet=m.players.some(p => p.cells);
 			$('cel-body').innerHTML=`${rec? '<div class="cel-badge">🔥 NOUVEAU RECORD 🔥</div>':''}
-    <div class="cel-trophy">🏆</div>${rec? '':'<div class="cel-title">VICTOIRE !</div>'}
-    <div class="cel-name">${esc(m.winner)}</div>
+    <div class="cel-trophy">${tie? '🤝':'🏆'}</div>${rec? '':`<div class="cel-title">${tie? 'ÉGALITÉ !':'VICTOIRE !'}</div>`}
+    <div class="cel-name">${ws.map(esc).join(' &amp; ')}</div>
     ${sc!=null? `<div class="cel-score">${sc}<small> pts</small></div>`:''}
     ${rec? `<div class="cel-old">Ancien record : ${prevMax} pts</div><div class="cel-pod">${podiumHtml(bests())}</div>`:''}
     <div class="grid" style="margin-top:12px">
       ${hasSheet? `<button class="btn alt" onclick="closeCel();openDetail(${m.id})">📋 Voir le tableau</button>`:''}
       ${hasSheet? `<button class="btn gold" onclick="closeCel();beginGame(lastNames)">🎲 Rejouer</button>`:''}
       <button class="btn" onclick="closeCel()">Menu</button></div>`;
-			startFx(rec);
+			startFx(rec,ws.map(pemoji).filter(Boolean));
 			if(navigator.vibrate) navigator.vibrate(rec? [200,100,200,100,500]:[150,80,150]);
 		}
 		function closeCel() {$('celebration').className=''; $('fx').classList.add('hidden'); cancelAnimationFrame(fx.raf)}
-		function startFx(rec)
+		function startFx(rec,emoji)
 		{
 			const cv=$('fx'),ctx=cv.getContext('2d'); cv.classList.remove('hidden'); cv.width=innerWidth; cv.height=innerHeight;
 			fx.parts=[]; fx.t=0; cancelAnimationFrame(fx.raf);
@@ -2552,6 +2588,13 @@
 					ctx.globalAlpha=Math.max(p.life,0); ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,3,0,7); ctx.fill(); ctx.globalAlpha=1;
 					return p.life>0
 				});
+				for(const [k,emo] of (emoji||[]).entries())
+				{
+					const size=Math.min(cv.width,cv.height)*.22,span=cv.width+size*2,prog=((fx.t*2+k*span/emoji.length)%span)/span,t=fx.t/8+k*2;
+					ctx.save(); ctx.translate(-size+prog*span,cv.height*.65-Math.abs(Math.sin(t))*size*.8);
+					ctx.rotate(Math.sin(t*1.5)*.35); ctx.scale(1+Math.sin(t*2)*.12,1-Math.sin(t*2)*.12);
+					ctx.font=size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(emo,0,0); ctx.restore();
+				}
 				fx.raf=requestAnimationFrame(loop);
 			})();
 		}
@@ -2574,7 +2617,7 @@
 		function syncClick() {if(TEST_MODE) return toast('Synchronisation désactivée en mode test'); tok&&Date.now()<tokExp? syncNow():askToken()}
 		function scheduleSync() {if(!tok) return; clearTimeout(syncT); syncT=setTimeout(syncNow,2000)}
 		const api=(url,o={}) => fetch(url,{...o,headers: {...(o.headers||{}),Authorization: 'Bearer '+tok}}).then(r => {if(r.status===401) {tok=null; needAuth=true; throw new Error('auth')} if(!r.ok) throw new Error('http '+r.status); return r});
-		const snap=() => ({matches: hist(),deleted: jget(K.DEL,[]),players: jget(K.PLAYERS,[]),hidden: jget(K.HIDDEN,[]),colors: jget(K.COLORS,{}),settings: {pts: settings.pts,thr: settings.thr,bonus: settings.bonus},ts: +localStorage.getItem(K.TS)||0});
+		const snap=() => ({matches: hist(),deleted: jget(K.DEL,[]),players: jget(K.PLAYERS,[]),hidden: jget(K.HIDDEN,[]),colors: jget(K.COLORS,{}),emoji: jget(K.EMOJI,{}),settings: {pts: settings.pts,thr: settings.thr,bonus: settings.bonus},ts: +localStorage.getItem(K.TS)||0});
 		function mergeData(l,r)
 		{
 			if(!r) return l;
@@ -2584,13 +2627,13 @@
 			return {
 				matches: [...mm.values()].filter(m => !del.has(m.id)).sort((a,b) => b.id-a.id),deleted: [...del],
 				players: [...new Map([...(l.players||[]),...(r.players||[])].map(p => [p.toLowerCase(),p])).values()],
-				hidden: n.hidden||[],colors: {...o.colors,...n.colors},settings: n.settings||l.settings,ts: Math.max(l.ts||0,r.ts||0)
+				hidden: n.hidden||[],colors: {...o.colors,...n.colors},emoji: {...o.emoji,...n.emoji},settings: n.settings||l.settings,ts: Math.max(l.ts||0,r.ts||0)
 			};
 		}
 		function applyData(m)
 		{
 			applying=true;
-			jset(K.HIST,m.matches); jset(K.DEL,m.deleted); jset(K.PLAYERS,m.players); jset(K.HIDDEN,m.hidden); jset(K.COLORS,m.colors);
+			jset(K.HIST,m.matches); jset(K.DEL,m.deleted); jset(K.PLAYERS,m.players); jset(K.HIDDEN,m.hidden); jset(K.COLORS,m.colors); jset(K.EMOJI,m.emoji||{});
 			if(m.settings) {settings.pts={...settings.pts,...m.settings.pts}; settings.thr=m.settings.thr; settings.bonus=m.settings.bonus; jset(K.SET,settings)}
 			applying=false; localStorage.setItem(K.TS,m.ts);
 			if(!game) {renderHome(); renderSelects(currentNames())} else $('home-podium').innerHTML=podiumHtml(bests());
