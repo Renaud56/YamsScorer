@@ -1641,6 +1641,7 @@
 		const SYNCED=[K.HIST,K.SET,K.PLAYERS,K.HIDDEN,K.COLORS,K.EMOJI,K.DEL];
 		const ANIMALS='🐶🐱🐭🐹🐰🦊🐻🐼🐨🐯🦁🐮🐷🐸🐵🙈🙉🙊🐔🐧🐦🐤🦆🦅🦉🦇🐺🐗🐴🦄🐝🪲🐛🦋🐌🐞🐜🪰🦟🕷️🦂🐢🐍🦎🦖🦕🐙🦑🦐🦞🦀🐡🐠🐟🐬🐳🐋🦈🐊🐅🐆🦓🦍🦧🐘🦛🦏🐪🐫🦒🦘🐃🐂🐄🐎🐖🐏🐑🦙🐐🦌🐕🐩🐈🐓🦃🦚🦜🦢🦩🕊️🐇🦝🦨🦡🦫🦦🦥🐁🐀🐿️🦔🐉🐲🦭🦬🦣🦤🪿🦫'.match(/\p{Extended_Pictographic}\uFE0F?/gu);
 		const pemoji=n => (jget(K.EMOJI,{})[(n||'').toLowerCase()])||'';
+		const pe=n => pemoji(n)? pemoji(n)+' ':'';
 		let applying=false;
 		const UP=['1','2','3','4','5','6'];
 		const LOW=['brelan','carre','full','gs','ps','plus','minus','yams'];
@@ -1746,7 +1747,7 @@
 			return `<div class="podium">${[1,0,2].map(i =>
 			{
 				const x=list[i]; if(!x) return '<div></div>';
-				return `<div class="p r${i}"><div class="nm">${medals[i]} ${esc(x.name)}</div><div class="step">${x.score}<small>${x.date? fmtDate(x.date):'date inconnue'}</small></div></div>`
+				return `<div class="p r${i}"><div class="nm">${medals[i]} ${esc(x.name)}${pemoji(x.name)? ` <span style="font-size:1.5em;line-height:1">${pemoji(x.name)}</span>`:''}</div><div class="step">${x.score}<small>${x.date? fmtDate(x.date):'date inconnue'}</small></div></div>`
 			}).join('')}</div>`;
 		}
 
@@ -1783,7 +1784,7 @@
 				const wanted=prev[i]!==undefined? prev[i]:settings.names[i];
 				const cur=list.find(p => p.toLowerCase()===(wanted||'').toLowerCase()&&!used.includes(p))||list.find(p => !used.includes(p))||list[0]||'';
 				used.push(cur);
-				return `<div class="row">${i>0? `<button class="btn alt" style="padding:2px 0;width:34px;font-size:12px;flex:none;border-width:2px;border-radius:8px" onclick="movePlayer(${i},-1)">▲</button>`:'<span style="width:34px;flex:none"></span>'}<select id="sel-${i}" style="${pstyle(cur)};min-width:0;font-weight:800" onchange="this.style.cssText=pstyle(this.value)+';min-width:0;font-weight:800'">${list.map(p => `<option value="${esc(p)}" style="background:#fff;color:#000" ${p===cur? 'selected':''}>${esc(p)}</option>`).join('')}</select><button class="btn alt" style="padding:8px 12px" onclick="addNew(${i})">+</button></div>`
+				return `<div class="row">${i>0? `<button class="btn alt" style="padding:2px 0;width:34px;font-size:12px;flex:none;border-width:2px;border-radius:8px" onclick="movePlayer(${i},-1)">▲</button>`:'<span style="width:34px;flex:none"></span>'}<select id="sel-${i}" style="${pstyle(cur)};min-width:0;font-weight:800" onchange="this.style.cssText=pstyle(this.value)+';min-width:0;font-weight:800'">${list.map(p => `<option value="${esc(p)}" style="background:#fff;color:#000" ${p===cur? 'selected':''}>${pe(p)}${esc(p)}</option>`).join('')}</select><button class="btn alt" style="padding:8px 12px" onclick="addNew(${i})">+</button></div>`
 			}).join('');
 		}
 		function movePlayer(i,d)
@@ -1995,7 +1996,7 @@
 				const wanted=prev[i]!==undefined? prev[i]:settings.names[i];
 				const cur=list.find(p => p.toLowerCase()===(wanted||'').toLowerCase()&&!used.includes(p))||list.find(p => !used.includes(p))||list[0]||'';
 				used.push(cur);
-				return `<div class="row"><select id="fin-sel-${i}" style="${pstyle(cur)};min-width:0;font-weight:800" onchange="finRefresh()">${list.map(p => `<option value="${esc(p)}" style="background:#fff;color:#000" ${p===cur? 'selected':''}>${esc(p)}</option>`).join('')}</select><input type="number" inputmode="numeric" min="0" max="999" id="fin-t${i}" value="${tot[i]??''}" placeholder="Total" style="width:84px;flex:none" oninput="checkTot(this);fin.manual=false;autoWinner()"><button class="btn alt" style="padding:8px 12px" onclick="addFinNew(${i})">+</button></div>`
+				return `<div class="row"><select id="fin-sel-${i}" style="${pstyle(cur)};min-width:0;font-weight:800" onchange="finRefresh()">${list.map(p => `<option value="${esc(p)}" style="background:#fff;color:#000" ${p===cur? 'selected':''}>${pe(p)}${esc(p)}</option>`).join('')}</select><input type="number" inputmode="numeric" min="0" max="999" id="fin-t${i}" value="${tot[i]??''}" placeholder="Total" style="width:84px;flex:none" oninput="checkTot(this);fin.manual=false;autoWinner()"><button class="btn alt" style="padding:8px 12px" onclick="addFinNew(${i})">+</button></div>`
 			}).join('');
 			finRefresh();
 		}
@@ -2116,9 +2117,9 @@
 				const mx=maxOf(m);
 				const rec=mx!=null&&mx===gmax;
 				return `<div class="card hcard${rec? ' rec':''}"><div class="top"><span>${fmtDT(m)}</span><span>${rec? '<span class="tag">🔥 RECORD</span> ':''}${mx!=null? 'Max : '+mx+' pts':'Score non saisi'}</span></div>
-				${top? `<div style="display:flex;align-items:center;gap:10px;border:3px solid #000;border-radius:12px;padding:6px 12px;margin-bottom:8px;background:${['#fde047','#e5e7eb','#fdba74'][ix]}"><span style="font-size:40px">${['🥇','🥈','🥉'][ix]}</span><div style="flex:1;min-width:0"><div style="display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:3px solid #000;border-radius:10px;padding:2px 12px;font-size:24px;font-weight:900;${pstyle(topE[ix].p.name)}">${esc(topE[ix].p.name)}</div><div style="font-size:30px;font-weight:900;line-height:1.1">${topE[ix].score} <span style="font-size:14px;font-weight:800">pts</span></div></div><span style="font-size:22px;font-weight:900">#${ix+1}</span></div>`:''}
-    <div style="font-weight:900;font-size:16px">${isTie(m)? '🤝 Égalité : '+winnersOf(m).map(esc).join(' & '):'🏆 '+esc(m.winner)}</div>
-	    <div>${winFirst(m).map(p => {const score=matchScore(p,m),win=isWinner(m,p.name); return `<span class="chip ${win? 'w':''}" style="${pstyle(p.name)}">${win? (isTie(m)? '🤝 ':'🏆 '):''}${esc(p.name)}${score!==null? ' · '+score+(score===mx? ' 👑':''):''}</span>`}).join('')}</div>
+				${top? `<div style="display:flex;align-items:center;gap:10px;border:3px solid #000;border-radius:12px;padding:6px 12px;margin-bottom:8px;background:${['#fde047','#e5e7eb','#fdba74'][ix]}"><span style="font-size:40px">${['🥇','🥈','🥉'][ix]}</span><div style="flex:1;min-width:0"><div style="display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:3px solid #000;border-radius:10px;padding:2px 12px;font-size:24px;font-weight:900;${pstyle(topE[ix].p.name)}">${pe(topE[ix].p.name)}${esc(topE[ix].p.name)}</div><div style="font-size:30px;font-weight:900;line-height:1.1">${topE[ix].score} <span style="font-size:14px;font-weight:800">pts</span></div></div><span style="font-size:22px;font-weight:900">#${ix+1}</span></div>`:''}
+    <div style="font-weight:900;font-size:16px">${isTie(m)? '🤝 Égalité : '+winnersOf(m).map(esc).join(' & '):'🏆 '+pe(m.winner)+esc(m.winner)}</div>
+	    <div>${winFirst(m).map(p => {const score=matchScore(p,m),win=isWinner(m,p.name); return `<span class="chip ${win? 'w':''}" style="${pstyle(p.name)}">${win? (isTie(m)? '🤝 ':'🏆 '):''}${pe(p.name)}${esc(p.name)}${score!==null? ' · '+score+(score===mx? ' 👑':''):''}</span>`}).join('')}</div>
     ${m.comment? `<div style="font-size:12px;font-style:italic;margin-top:4px">💬 ${esc(m.comment)}</div>`:''}
     <div class="grid grid2" style="margin-top:8px;grid-template-columns:3fr 1fr"><button class="btn" style="padding:8px" onclick="openDetail(${m.id})">Détails</button><button class="btn red" style="padding:8px" onclick="deleteMatch(${m.id})">🗑</button></div></div>`
 			};
@@ -2199,7 +2200,7 @@
 			if(!names.includes(famePairB)||famePairB===famePairA) famePairB=names.find(n => n!==famePairA)||'';
 			const absolute=`<div class="card fame-record"><div style="font-size:12px;font-weight:900">👑 RECORD ABSOLU 👑</div><div class="fame-record-score">${record>0? record:'–'}</div><div>${holders.length? holders.map(x => `<span class="chip" style="${pstyle(x.n)};font-size:16px">${esc(x.n)}</span>`).join(''):'Aucun détenteur enregistré'}</div>${holders.some(x => x.bd)? `<div style="font-size:11px;font-weight:700;margin-top:4px">${holders.filter(x => x.bd).map(x => fmtDate(x.bd)).join(' · ')}</div>`:''}</div>`;
 			const toggle=`<div class="tabs fame-mode"><button class="${fameMode==='global'? 'on':''}" onclick="setFameMode('global')">Global</button><button class="${fameMode==='versus'? 'on':''}" onclick="setFameMode('versus')">Versus</button><button class="${fameMode==='category'? 'on':''}" onclick="setFameMode('category')">Efficacité par catégorie</button></div>`;
-			const pairSelect=(side,value) => side==='b'&&!famePairB? '<select aria-label="Joueur 2" disabled><option>Second joueur</option></select>':`<select aria-label="${side==='a'? 'Joueur 1':'Joueur 2'}" style="${pstyle(value)};min-width:0;font-weight:800" onchange="this.style.cssText=pstyle(this.value)+';min-width:0;font-weight:800';setFamePair('${side}',this.value)">${names.map(n => `<option value="${esc(n)}" style="background:#fff;color:#000"${n===value? ' selected':''}>${esc(n)}</option>`).join('')}</select>`;
+			const pairSelect=(side,value) => side==='b'&&!famePairB? '<select aria-label="Joueur 2" disabled><option>Second joueur</option></select>':`<select aria-label="${side==='a'? 'Joueur 1':'Joueur 2'}" style="${pstyle(value)};min-width:0;font-weight:800" onchange="this.style.cssText=pstyle(this.value)+';min-width:0;font-weight:800';setFamePair('${side}',this.value)">${names.map(n => `<option value="${esc(n)}" style="background:#fff;color:#000"${n===value? ' selected':''}>${pe(n)}${esc(n)}</option>`).join('')}</select>`;
 			const versusControls=fameMode==='versus'? `<div class="fame-pair">${pairSelect('a',famePairA)}${pairSelect('b',famePairB)}</div>`:'';
 			const playerFilter=fameMode==='versus'? '':`<div class="fame-player-filter" aria-label="Joueurs affichés"><span class="fame-filter-label">Sélection des joueurs</span>${players.map(x => {const hidden=fameHiddenPlayers.has(x.n),encoded=encodeURIComponent(x.n).replace(/'/g,'%27'); return `<button type="button" class="${hidden? 'off':''}" style="${hidden? '':pstyle(x.n)}" aria-pressed="${!hidden}" onclick="toggleFamePlayer('${encoded}')">${esc(x.n)}</button>`}).join('')}</div>`;
 			const pairMatches=matches.filter(m => famePairA!==famePairB&&m.players.some(p => p.name===famePairA)&&m.players.some(p => p.name===famePairB)).sort((a,b) => sk(a).localeCompare(sk(b))||a.id-b.id);
@@ -2237,7 +2238,7 @@
 			];
 			const recordHolders=players.filter(x => x.best!=null&&x.best===record&&record>0);
 			const fameCell=(value,best,isRecord,isWorst) => `<td style="${isRecord? 'background:#fde047;box-shadow:inset 0 0 0 2px #b45309':best? 'background:#dcfce7;box-shadow:inset 0 0 0 2px #16a34a':isWorst? 'background:#fecaca;box-shadow:inset 0 0 0 2px #dc2626':''}">${value}${isRecord? '<sup>👑</sup>':best? '<sup>▲</sup>':isWorst? '<sup>▼</sup>':''}</td>`;
-			return `<div style="overflow-x:auto"><table class="sheet"${players.length>4? ` style="min-width:${76+players.length*64}px"`:''}><thead><tr><th class="rl"></th>${players.map(x => `<th style="${pstyle(x.n)}"><div class="pn">${esc(x.n)}</div></th>`).join('')}</tr></thead><tbody>${rows.map(([label,value,best,rec=() => false,detail,worst=() => false]) => `<tr><th class="rl">${label}${detail? `<small>${detail}</small>`:''}</th>${players.map(x => fameCell(value(x),best(x),rec(x),worst(x))).join('')}</tr>`).join('')}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#dcfce7;border:2px solid #16a34a;border-radius:6px;padding:0 6px">▲ vert</span> meilleur indicateur · <span style="background:#fde047;border:2px solid #b45309;border-radius:6px;padding:0 6px">👑 jaune</span> record${recordHolders.length? ' pour ce périmètre':''}</p>`;
+			return `<div style="overflow-x:auto"><table class="sheet"${players.length>4? ` style="min-width:${76+players.length*64}px"`:''}><thead><tr><th class="rl"></th>${players.map(x => `<th style="${pstyle(x.n)}"><div class="pn">${pe(x.n)}${esc(x.n)}</div></th>`).join('')}</tr></thead><tbody>${rows.map(([label,value,best,rec=() => false,detail,worst=() => false]) => `<tr><th class="rl">${label}${detail? `<small>${detail}</small>`:''}</th>${players.map(x => fameCell(value(x),best(x),rec(x),worst(x))).join('')}</tr>`).join('')}</tbody></table></div><p style="font-size:11px;font-weight:700;margin-bottom:0"><span style="background:#dcfce7;border:2px solid #16a34a;border-radius:6px;padding:0 6px">▲ vert</span> meilleur indicateur · <span style="background:#fde047;border:2px solid #b45309;border-radius:6px;padding:0 6px">👑 jaune</span> record${recordHolders.length? ' pour ce périmètre':''}</p>`;
 		}
 		function versusStats(matches,names,globalPlayers)
 		{
@@ -2458,7 +2459,7 @@
 			const pl=winFirst(m),totals=pl.map(p => matchScore(p,m));
 			$('detail-body').innerHTML=(pl.some(p => p.cells)
 				? `<div style="overflow-x:auto">${renderSheet(pl,m.rules||settings,{winners: winnersOf(m),totals,recTotal: maxScore()})}</div><div style="font-size:11px;font-weight:700;margin-top:8px">Pastille à la couleur du joueur : meilleur de la ligne · ★ gagnant · <span class="rtag">★ RECORD</span> meilleur total jamais atteint</div>`
-				:`<p style="font-size:12px;font-weight:700">Détail des points non saisi.</p><div>${pl.map(p => `<div class="chip ${isWinner(m,p.name)? 'w':''}" style="${pstyle(p.name)};display:block;font-size:16px;margin-bottom:6px">${isWinner(m,p.name)? '★ ':''}${esc(p.name)} : ${matchScore(p,m)??'–'}${matchScore(p,m)!==null? ' pts':''}</div>`).join('')}</div>`)
+				:`<p style="font-size:12px;font-weight:700">Détail des points non saisi.</p><div>${pl.map(p => `<div class="chip ${isWinner(m,p.name)? 'w':''}" style="${pstyle(p.name)};display:block;font-size:16px;margin-bottom:6px">${isWinner(m,p.name)? '★ ':''}${pe(p.name)}${esc(p.name)} : ${matchScore(p,m)??'–'}${matchScore(p,m)!==null? ' pts':''}</div>`).join('')}</div>`)
 				+`<label class="l">Commentaire</label><textarea id="detail-comment" rows="3" maxlength="300" placeholder="Ajouter un commentaire">${esc(m.comment||'')}</textarea><button class="btn" style="margin-top:8px;width:100%" onclick="saveComment(${m.id},$('detail-comment').value)">💾 Enregistrer le commentaire</button>`;
 			closeM('history-modal'); openM('detail-modal');
 		}
