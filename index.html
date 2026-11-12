@@ -79,6 +79,20 @@
 			opacity: .8
 		}
 
+		#cloud-btn {
+			background: none;
+			border: 0;
+			padding: 2px;
+			margin-left: 10px;
+			line-height: 0;
+			cursor: pointer;
+			color: #ef4444
+		}
+
+		#cloud-btn.ok {
+			color: #22c55e
+		}
+
 		main {
 			max-width: 640px;
 			margin: 0 auto;
@@ -1303,7 +1317,8 @@
 
 	<header>
 		<h1 id="h-title">🎲 YAMS MASTER</h1>
-		<span id="h-sub">Prêt à jouer</span>
+		<div style="display:flex;align-items:center"><span id="h-sub">Prêt à jouer</span>
+		<button id="cloud-btn" aria-label="Google Drive" title="Google Drive" onclick="syncClick()"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H7a5 5 0 1 1 .9-9.9A6 6 0 0 1 19.4 11.5 3.8 3.8 0 0 1 17.5 19z"/><path id="cloud-mark" d="M9 13.5l2.2 2.2L15.5 11.5"/></svg></button></div>
 	</header>
 
 	<main>
@@ -2620,7 +2635,9 @@
 		/* ---------- synchro Google Drive ---------- */
 		const CID='247129530373-otell6t5pgg182o3oiiq2u57ma3557tl.apps.googleusercontent.com',SCOPE='https://www.googleapis.com/auth/drive',FNAME='yams-shared.json';
 		let sharedId=null,tc=null,tok=null,tokExp=0,needAuth=false,lastTry=0,busy=false,again=false,syncT=0;
-		function setSync(ok,msg) {$('sync-status').innerText=msg; $('sync-btn').innerText=ok? '☁ Synchroniser maintenant':'☁ Se connecter à Google Drive'}
+		function cloudState() {const ok=!!tok&&Date.now()<tokExp; $('cloud-btn').classList.toggle('ok',ok); $('cloud-mark').setAttribute('d',ok? 'M9 13.5l2.2 2.2L15.5 11.5':'M10 11l5 5M15 11l-5 5')}
+		setInterval(() => cloudState(),30000);
+		function setSync(ok,msg) {cloudState(); $('sync-status').innerText=msg; $('sync-btn').innerText=ok? '☁ Synchroniser maintenant':'☁ Se connecter à Google Drive'}
 		function gsiReady()
 		{
 			if(TEST_MODE) return;
@@ -2694,7 +2711,7 @@
 
 		/* ---------- init ---------- */
 		{const h=hist(); if(h.map(fixWinner).some(Boolean)) jset(K.HIST,h)}
-		setCount(count); renderHome();
+		setCount(count); renderHome(); cloudState();
 		if(jget(K.STATE,null)) resumeGame();
 		initAppBackNavigation();
 	</script>
