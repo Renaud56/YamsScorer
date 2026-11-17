@@ -2071,12 +2071,12 @@
 			$('fin-totals').innerHTML=fin.live? fin.players.map((p,i) =>
 			{
 				const c=calc(p.cells,settings),v=old[i]!==undefined? old[i]:(p.cells? c.total:'');
-				return `<div class="row"><div class="chip" style="${pstyle(p.name)};flex:1;font-size:16px;margin:0;padding:8px 12px;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div><input type="number" inputmode="numeric" min="0" max="999" id="fin-t${i}" value="${v}" placeholder="Total" style="width:110px" oninput="checkTot(this);fin.manual=false;autoWinner()"></div>`
+				return `<div class="row"><div class="chip" style="${pstyle(p.name)};flex:1;font-size:16px;margin:0;padding:8px 12px;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div><input type="number" inputmode="numeric" min="0" max="999" id="fin-live-t${i}" value="${v}" placeholder="Total" style="width:110px" oninput="checkTot(this);fin.manual=false;autoWinner()"></div>`
 			}).join(''):'';
 			$('fin-winner').innerHTML='<option value="">— choisir —</option>'+fin.players.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
 			autoWinner();
 		}
-		function finTotals() {return fin.players.map((_,i) => {const v=$('fin-t'+i).value; return v===''? null:Math.max(0,parseInt(v,10)||0)})}
+		function finTotals() {return fin.players.map((_,i) => {const v=$(fin.live? 'fin-live-t'+i:'fin-t'+i).value; return v===''? null:Math.max(0,parseInt(v,10)||0)})}
 		// − doit rester inférieur à +, donc 29 au maximum
 		function maxTotal() {const p=settings.pts,up=105; return up+(up>=settings.thr? settings.bonus:0)+30+30+p.full+p.gs+p.ps+30+29+p.yams}
 		function checkTot(el) {el.style.borderColor=el.value!==''&&+el.value>maxTotal()? '#c1121f':'#000'}
