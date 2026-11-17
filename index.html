@@ -1494,6 +1494,8 @@
 			</div>
 			<label class="l" style="margin-top:0">Thème</label>
 			<div class="grid grid2"><button class="btn" id="th-checker" onclick="setTheme('checker')">♟ Damier</button><button class="btn" id="th-nb" onclick="setTheme('nb')">📓 Carnet</button></div>
+			<label class="l">Célébration de fin de partie</label>
+			<select id="st-celeb"><option value="classic">Classique (content / triste)</option><option value="leapfrog">Saute-mouton</option></select>
 			<label class="l">Points des combinaisons</label>
 			<div class="grid grid2">
 				<div><label class="l">Full</label><input type="number" inputmode="numeric" id="st-full"></div>
@@ -1665,7 +1667,7 @@
 		const NCELLS=UP.length+LOW.length;
 		const LABEL={brelan: 'Brelan',carre: 'Carré',full: 'Full',gs: 'GS',ps: 'PS',plus: '+',minus: '−',yams: 'YAMS'};
 		const HINT={gs: 'grande suite',ps: 'petite suite',plus: 'max',minus: 'min'};
-		const DEF={playerCount: 2,names: [],pts: {full: 25,gs: 40,ps: 30,yams: 50},thr: 63,bonus: 35};
+		const DEF={playerCount: 2,names: [],pts: {full: 25,gs: 40,ps: 30,yams: 50},thr: 63,bonus: 35,celebMode: 'classic'};
 
 		const testMem={[K.EMOJI]: {ren: '🦊',elo: '🐼','licù': '🦁','joueur 1': '🐸'}};
 		const jget=(k,d) => {if(TEST_MODE) return k===K.HIST? window.YAMS_TEST_HISTORY||d:testMem[k]??d; try {const v=JSON.parse(localStorage.getItem(k)); return v==null? d:v} catch(e) {return d} };
@@ -2494,12 +2496,12 @@
 		{
 			syncThemeBtns();
 			$('st-full').value=settings.pts.full; $('st-gs').value=settings.pts.gs; $('st-ps').value=settings.pts.ps; $('st-yams').value=settings.pts.yams;
-			$('st-thr').value=settings.thr; $('st-bonus').value=settings.bonus; openM('settings-modal');
+			$('st-thr').value=settings.thr; $('st-bonus').value=settings.bonus; $('st-celeb').value=settings.celebMode; openM('settings-modal');
 		}
 		function saveSettingsModal()
 		{
 			const g=id => Math.max(0,parseInt($(id).value,10)||0);
-			settings.pts={full: g('st-full'),gs: g('st-gs'),ps: g('st-ps'),yams: g('st-yams')}; settings.thr=g('st-thr'); settings.bonus=g('st-bonus');
+			settings.pts={full: g('st-full'),gs: g('st-gs'),ps: g('st-ps'),yams: g('st-yams')}; settings.thr=g('st-thr'); 			settings.bonus=g('st-bonus'); settings.celebMode=$('st-celeb').value;
 			jset(K.SET,settings); closeM('settings-modal'); if(game) renderGame();
 			log('Configuration des points enregistrée',settings.pts,settings.thr,settings.bonus);
 			const n=recalcHistory(); $('home-podium').innerHTML=podiumHtml(bests()); toast(n? `Points enregistrés · ${n} partie(s) recalculée(s)`:'Points enregistrés');
@@ -2572,11 +2574,14 @@
       ${hasSheet? `<button class="btn alt" onclick="closeCel();openDetail(${m.id})">📋 Voir le tableau</button>`:''}
       ${hasSheet? `<button class="btn gold" onclick="closeCel();beginGame(lastNames)">🎲 Rejouer</button>`:''}
       <button class="btn" onclick="closeCel()">Menu</button></div>`;
-			startFx(rec,ws.map(pemoji).filter(Boolean),m.players.filter(p => !ws.includes(p.name)).map(p => pemoji(p.name)).filter(Boolean));
+			if(settings.celebMode==='leapfrog')
+				startFx(rec,[],[],m.players.filter(p => pemoji(p.name)).map(p => ({emo: pemoji(p.name),win: ws.includes(p.name)})));
+			else
+				startFx(rec,ws.map(pemoji).filter(Boolean),m.players.filter(p => !ws.includes(p.name)).map(p => pemoji(p.name)).filter(Boolean));
 			if(navigator.vibrate) navigator.vibrate(rec? [200,100,200,100,500]:[150,80,150]);
 		}
 		function closeCel() {$('celebration').className=''; $('fx').classList.add('hidden'); cancelAnimationFrame(fx.raf)}
-		function startFx(rec,emoji,losers)
+		function startFx(rec,emoji,losers,leap)
 		{
 			const cv=$('fx'),ctx=cv.getContext('2d'); cv.classList.remove('hidden'); cv.width=innerWidth; cv.height=innerHeight;
 			fx.parts=[]; fx.t=0; cancelAnimationFrame(fx.raf);
@@ -2612,6 +2617,25 @@
 					ctx.save(); ctx.translate(-size+prog*span,cv.height*.65-Math.abs(Math.sin(t))*size*.8);
 					ctx.rotate(Math.sin(t*1.5)*.35+spin); ctx.scale(1+Math.sin(t*2)*.12,1-Math.sin(t*2)*.12);
 					ctx.font=size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(emo,0,0); ctx.restore();
+				}
+				// Saute-mouton : le dernier du groupe rebondit sur la tête de chacun puis atterrit devant ; le gagnant est plus grand
+				if(leap&&leap.length)
+				{
+					const n=leap.length,big=Math.min(cv.width,cv.height)*.2,d=big*1.05,span=cv.width+n*d+big*2,L=Math.max(75,30*n+20),c=Math.floor(fx.t/L),f=(fx.t%L)/L;
+					const jf=Math.min(.999,f/.85),seg=Math.floor(jf*n),u=jf*n-seg,gy=cv.height*.72;
+					const sz=j => big*(leap[j].win? 1:.55),headOf=k => k>=n? 0:sz((c+k)%n)*.8;
+					const h0=seg? headOf(seg):0,h1=headOf(seg+1);
+					const sorted=leap.map((p,j) => ({...p,j})).sort((a,b) => a.win-b.win);
+					for(const p of sorted)
+					{
+						const r=(((p.j-c)%n)+n)%n,jumping=r===0,size=sz(p.j);
+						let pos=c+r,y=gy,sy=1;
+						if(jumping) {pos=c+seg+u; y=gy-(h0+(h1-h0)*u+Math.sin(Math.PI*u)*big*.45)}
+						else if(r===seg&&seg>0&&u<.25) sy=1-.3*Math.sin(Math.PI*u/.25);
+						const x=((pos*d%span)+span)%span-big;
+						ctx.save(); ctx.translate(x,y); ctx.scale(1/sy**.3,sy);
+						ctx.font=size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.fillText(p.emo,0,size*.5); ctx.restore();
+					}
 				}
 				// Perdants : traversée lente de droite à gauche, en pleurs
 				for(const [k,emo] of (losers||[]).entries())
